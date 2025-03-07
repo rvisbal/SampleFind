@@ -9,6 +9,7 @@ using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using System.Drawing.Text;
 using System.Drawing.Imaging;
+using System.Text;
 
 namespace WinFormsApp1
 {
@@ -38,6 +39,9 @@ namespace WinFormsApp1
         {
             InitializeComponent();
             InitializeCustomComponents();
+            
+            // Try to load default filters if available
+            LoadDefaultFilters();
         }
 
         private void InitializeCustomComponents()
@@ -407,13 +411,41 @@ namespace WinFormsApp1
                 return;
             }
 
+            // Show processing indicator in status bar
+            statusLabel.Text = "Processing filters...";
+            Application.DoEvents(); // Allow UI to update
+
             mainTextBox.SuspendLayout();
             mainTextBox.Clear();
 
             // If no filters are active, show all lines
             if (filterConditions.Count == 0 || filterConditions.All(c => string.IsNullOrEmpty(c.TextBox.Text)))
             {
-                mainTextBox.Text = string.Join(Environment.NewLine, originalLines);
+                // For large files, use a StringBuilder and append in chunks
+                if (originalLines.Count > 10000)
+                {
+                    const int chunkSize = 5000;
+                    for (int i = 0; i < originalLines.Count; i += chunkSize)
+                    {
+                        int count = Math.Min(chunkSize, originalLines.Count - i);
+                        string chunk = string.Join(Environment.NewLine, originalLines.GetRange(i, count));
+                        mainTextBox.AppendText(chunk);
+                        if (i + count < originalLines.Count)
+                        {
+                            mainTextBox.AppendText(Environment.NewLine);
+                        }
+                        // Allow UI to update periodically for responsiveness
+                        if (i % 20000 == 0)
+                        {
+                            Application.DoEvents();
+                        }
+                    }
+                }
+                else
+                {
+                    mainTextBox.Text = string.Join(Environment.NewLine, originalLines);
+                }
+                
                 mainTextBox.Select(0, 0);
                 mainTextBox.ResumeLayout();
                 
@@ -422,42 +454,106 @@ namespace WinFormsApp1
                 return;
             }
 
-            // First find all matching lines and their colors
-            var matchingLines = new List<(string Line, Color Color)>();
+            // Prepare filter conditions for faster matching
+            var activeFilters = filterConditions
+                .Where(c => !string.IsNullOrEmpty(c.TextBox.Text))
+                .Select(c => new {
+                    Text = c.TextBox.Text,
+                    IsContains = c.TypeComboBox.Text == "CONTAINS",
+                    Color = c.ColorButton.BackColor
+                })
+                .ToList();
+
+            // Pre-allocate collection with estimated capacity
+            var matchingLines = new List<(string Line, Color Color)>(originalLines.Count / 4);
             
-            for (int i = 0; i < originalLines.Count; i++)
+            // Process in chunks for better responsiveness
+            const int processChunkSize = 10000;
+            for (int chunkStart = 0; chunkStart < originalLines.Count; chunkStart += processChunkSize)
             {
-                string line = originalLines[i];
-                var matchingFilter = filterConditions.FirstOrDefault(condition =>
+                int chunkEnd = Math.Min(chunkStart + processChunkSize, originalLines.Count);
+                
+                // Process this chunk
+                for (int i = chunkStart; i < chunkEnd; i++)
                 {
-                    if (string.IsNullOrEmpty(condition.TextBox.Text))
-                        return false;
-
-                    return condition.TypeComboBox.Text == "CONTAINS"
-                        ? line.Contains(condition.TextBox.Text, StringComparison.OrdinalIgnoreCase)
-                        : line.Equals(condition.TextBox.Text, StringComparison.OrdinalIgnoreCase);
-                });
-
-                if (matchingFilter != null)
+                    string line = originalLines[i];
+                    
+                    // Find first matching filter
+                    foreach (var filter in activeFilters)
+                    {
+                        bool isMatch = filter.IsContains
+                            ? line.IndexOf(filter.Text, StringComparison.OrdinalIgnoreCase) >= 0 // Faster than Contains with StringComparison
+                            : line.Equals(filter.Text, StringComparison.OrdinalIgnoreCase);
+                        
+                        if (isMatch)
+                        {
+                            matchingLines.Add((line, filter.Color));
+                            break; // Stop checking other filters once we find a match
+                        }
+                    }
+                }
+                
+                // Allow UI to update periodically
+                if (chunkStart % (processChunkSize * 2) == 0)
                 {
-                    matchingLines.Add((line, matchingFilter.ColorButton.BackColor));
+                    statusLabel.Text = $"Processing... {Math.Min(chunkEnd, originalLines.Count):N0}/{originalLines.Count:N0} lines";
+                    Application.DoEvents();
                 }
             }
 
             // Now display only the matching lines with their colors
             if (matchingLines.Count > 0)
             {
-                for (int i = 0; i < matchingLines.Count; i++)
+                // For large result sets, use batched processing
+                if (matchingLines.Count > 5000)
                 {
-                    var (line, color) = matchingLines[i];
-                    int startIndex = mainTextBox.TextLength;
+                    // First, build the text content
+                    StringBuilder sb = new StringBuilder(matchingLines.Count * 100); // Estimate average line length
+                    for (int i = 0; i < matchingLines.Count; i++)
+                    {
+                        sb.AppendLine(matchingLines[i].Line);
+                    }
                     
-                    mainTextBox.AppendText(line);
-                    if (i < matchingLines.Count - 1)
-                        mainTextBox.AppendText(Environment.NewLine);
+                    // Set the text all at once (much faster)
+                    mainTextBox.Text = sb.ToString();
+                    
+                    // Now apply colors in batches
+                    mainTextBox.SuspendLayout();
+                    int currentPos = 0;
+                    for (int i = 0; i < matchingLines.Count; i++)
+                    {
+                        var (line, color) = matchingLines[i];
+                        int lineLength = line.Length;
                         
-                    mainTextBox.Select(startIndex, line.Length);
-                    mainTextBox.SelectionBackColor = color;
+                        mainTextBox.Select(currentPos, lineLength);
+                        mainTextBox.SelectionBackColor = color;
+                        
+                        // Skip past this line and the newline character(s)
+                        currentPos += lineLength + Environment.NewLine.Length;
+                        
+                        // Update UI periodically
+                        if (i % 1000 == 0 && i > 0)
+                        {
+                            statusLabel.Text = $"Applying colors... {i:N0}/{matchingLines.Count:N0}";
+                            Application.DoEvents();
+                        }
+                    }
+                }
+                else
+                {
+                    // For smaller result sets, use the original approach
+                    for (int i = 0; i < matchingLines.Count; i++)
+                    {
+                        var (line, color) = matchingLines[i];
+                        int startIndex = mainTextBox.TextLength;
+                        
+                        mainTextBox.AppendText(line);
+                        if (i < matchingLines.Count - 1)
+                            mainTextBox.AppendText(Environment.NewLine);
+                            
+                        mainTextBox.Select(startIndex, line.Length);
+                        mainTextBox.SelectionBackColor = color;
+                    }
                 }
                 
                 // Calculate percentage of lines displayed
@@ -669,6 +765,53 @@ namespace WinFormsApp1
                 menuItem.Checked = !menuItem.Checked;
                 mainTextBox.ShowLineNumbers = menuItem.Checked;
                 mainTextBox.Invalidate();
+            }
+        }
+
+        private void LoadDefaultFilters()
+        {
+            string defaultFiltersPath = Path.Combine(Application.StartupPath, "default.json");
+            
+            if (File.Exists(defaultFiltersPath))
+            {
+                try
+                {
+                    string jsonString = File.ReadAllText(defaultFiltersPath);
+                    var filterData = JsonSerializer.Deserialize<List<FilterData>>(jsonString);
+
+                    // Clear existing filters (should be empty on startup, but just in case)
+                    Panel filterConditionsPanel = (Panel)filterForm.Controls.Find("filterConditionsPanel", true)[0];
+                    filterConditionsPanel.Controls.Clear();
+                    filterConditions.Clear();
+
+                    // Add label back
+                    Label explanationLabel = new Label
+                    {
+                        Text = "Add filters to show only lines that match the criteria. Each filter is applied with OR logic.",
+                        Dock = DockStyle.Top,
+                        Height = 40,
+                        Font = new Font("Segoe UI", 9),
+                        ForeColor = Color.DimGray,
+                        TextAlign = ContentAlignment.MiddleLeft,
+                        Padding = new Padding(5)
+                    };
+                    filterConditionsPanel.Controls.Add(explanationLabel);
+
+                    // Add loaded filters
+                    foreach (var filter in filterData)
+                    {
+                        AddFilterFromData(filter);
+                    }
+                    
+                    // Update status bar
+                    statusLabel.Text = $"Default filters loaded from {defaultFiltersPath}";
+                }
+                catch (Exception ex)
+                {
+                    // Log error but don't show message box on startup
+                    Console.WriteLine($"Error loading default filters: {ex.Message}");
+                    statusLabel.Text = "Error loading default filters";
+                }
             }
         }
     }
