@@ -18,6 +18,8 @@ namespace WinFormsApp1
         private List<string> originalLines = new List<string>();
         private Form filterForm;
         private LineNumberRichTextBox mainTextBox;
+        private StatusStrip statusStrip;
+        private ToolStripStatusLabel statusLabel;
 
         [DllImport("Shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr ExtractIcon(IntPtr hInst, string lpszExeFileName, int nIconIndex);
@@ -59,6 +61,12 @@ namespace WinFormsApp1
             menuStrip.Items.Add(viewMenu);
             this.MainMenuStrip = menuStrip;
             this.Controls.Add(menuStrip);
+
+            // Create status strip
+            statusStrip = new StatusStrip();
+            statusLabel = new ToolStripStatusLabel("Ready");
+            statusStrip.Items.Add(statusLabel);
+            this.Controls.Add(statusStrip);
 
             // Container panel for layout
             Panel containerPanel = new Panel
@@ -280,8 +288,8 @@ namespace WinFormsApp1
                         mainTextBox.Select(0, 0);
                         mainTextBox.ResumeLayout();
 
-                        // Show file info
-                        MessageBox.Show($"File loaded with {originalLines.Count:N0} lines.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        // Update status bar instead of showing message box
+                        statusLabel.Text = $"Total lines: {originalLines.Count:N0} | Displayed: {originalLines.Count:N0} (100%)";
 
                         // Optional: Free up memory if it's a very large file
                         if (originalLines.Count > 100000)
@@ -408,6 +416,9 @@ namespace WinFormsApp1
                 mainTextBox.Text = string.Join(Environment.NewLine, originalLines);
                 mainTextBox.Select(0, 0);
                 mainTextBox.ResumeLayout();
+                
+                // Update status bar to show all lines are displayed
+                statusLabel.Text = $"Total lines: {originalLines.Count:N0} | Displayed: {originalLines.Count:N0} (100%)";
                 return;
             }
 
@@ -448,10 +459,15 @@ namespace WinFormsApp1
                     mainTextBox.Select(startIndex, line.Length);
                     mainTextBox.SelectionBackColor = color;
                 }
+                
+                // Calculate percentage of lines displayed
+                double percentage = (double)matchingLines.Count / originalLines.Count * 100;
+                statusLabel.Text = $"Total lines: {originalLines.Count:N0} | Displayed: {matchingLines.Count:N0} ({percentage:F1}%)";
             }
             else
             {
                 mainTextBox.AppendText("No matches found.");
+                statusLabel.Text = $"Total lines: {originalLines.Count:N0} | Displayed: 0 (0%)";
             }
 
             mainTextBox.Select(0, 0);
