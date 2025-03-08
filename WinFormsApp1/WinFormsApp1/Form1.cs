@@ -252,6 +252,10 @@ namespace WinFormsApp1
             // Add Clean Date Part menu item to Tools menu
             ToolStripMenuItem cleanDatePartMenuItem = new ToolStripMenuItem("Clean Date Part (Remove Before '|')", null, CleanDatePart_Click);
             toolsMenu.DropDownItems.Add(cleanDatePartMenuItem);
+            
+            // Add Combine Identical Lines menu item to Tools menu
+            ToolStripMenuItem combineIdenticalLinesMenuItem = new ToolStripMenuItem("Combine Identical Lines", null, CombineIdenticalLines_Click);
+            toolsMenu.DropDownItems.Add(combineIdenticalLinesMenuItem);
 
             // Add all menus to the menu strip
             menuStrip.Items.Add(fileMenu);
@@ -1214,6 +1218,118 @@ namespace WinFormsApp1
             {
                 MessageBox.Show($"Error processing content: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 statusLabel.Text = "Error processing content";
+            }
+        }
+
+        private void CombineIdenticalLines_Click(object sender, EventArgs e)
+        {
+            // Check if there's content to process
+            if (originalLines.Count == 0)
+            {
+                MessageBox.Show("Please open a file first.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            try
+            {
+                // Show processing indicator
+                statusLabel.Text = "Combining identical lines...";
+                Application.DoEvents();
+
+                // Create a new list to store the combined lines
+                List<string> combinedLines = new List<string>();
+                
+                if (originalLines.Count > 0)
+                {
+                    string currentLine = originalLines[0];
+                    int count = 1;
+                    
+                    // Process from the second line onwards
+                    for (int i = 1; i < originalLines.Count; i++)
+                    {
+                        if (originalLines[i] == currentLine)
+                        {
+                            // Same line, increment counter
+                            count++;
+                        }
+                        else
+                        {
+                            // Different line, add the previous line with count if needed
+                            if (count > 1)
+                            {
+                                combinedLines.Add($"{currentLine} - {count}");
+                            }
+                            else
+                            {
+                                combinedLines.Add(currentLine);
+                            }
+                            
+                            // Reset for the new line
+                            currentLine = originalLines[i];
+                            count = 1;
+                        }
+                    }
+                    
+                    // Add the last line
+                    if (count > 1)
+                    {
+                        combinedLines.Add($"{currentLine} - {count}");
+                    }
+                    else
+                    {
+                        combinedLines.Add(currentLine);
+                    }
+                }
+                
+                // Replace the original lines with the combined lines
+                originalLines = combinedLines;
+                
+                // Update the display
+                mainTextBox.SuspendLayout();
+                mainTextBox.Clear();
+                
+                // For large files, use a StringBuilder and append in chunks
+                if (originalLines.Count > 10000)
+                {
+                    const int chunkSize = 5000;
+                    for (int i = 0; i < originalLines.Count; i += chunkSize)
+                    {
+                        int count = Math.Min(chunkSize, originalLines.Count - i);
+                        string chunk = string.Join(Environment.NewLine, originalLines.GetRange(i, count));
+                        mainTextBox.AppendText(chunk);
+                        if (i + count < originalLines.Count)
+                        {
+                            mainTextBox.AppendText(Environment.NewLine);
+                        }
+                        // Allow UI to update periodically for responsiveness
+                        if (i % 20000 == 0)
+                        {
+                            Application.DoEvents();
+                        }
+                    }
+                }
+                else
+                {
+                    mainTextBox.Text = string.Join(Environment.NewLine, originalLines);
+                }
+                
+                mainTextBox.Select(0, 0);
+                mainTextBox.ResumeLayout();
+                
+                // Update status bar
+                int linesReduced = combinedLines.Count - originalLines.Count;
+                statusLabel.Text = $"Combined identical lines: {combinedLines.Count:N0} lines (reduced by {Math.Abs(linesReduced):N0} lines)";
+                
+                // If filters were applied, reapply them to the combined content
+                if (filterConditions.Count > 0 && filterConditions.Any(c => c.Enabled && !string.IsNullOrEmpty(c.TextBox.Text)))
+                {
+                    ApplyFilters_Click(null, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error processing content: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                statusLabel.Text = "Error combining lines";
             }
         }
     }
