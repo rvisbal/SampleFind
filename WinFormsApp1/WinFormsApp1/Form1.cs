@@ -528,12 +528,23 @@ namespace WinFormsApp1
                 BorderStyle = BorderStyle.None
             };
 
+            // Add enabled checkbox
+            CheckBox enabledCheckBox = new CheckBox
+            {
+                Text = "",
+                Checked = true,
+                Location = new Point(10, 15),
+                Width = 20,
+                Height = 20
+            };
+            enabledCheckBox.CheckedChanged += (s, ev) => ApplyFilters_Click(null, null); // Reapply filters when checkbox changes
+
             ComboBox filterTypeCombo = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Width = 120,
+                Width = 100,
                 Height = 30,
-                Location = new Point(10, 10),
+                Location = new Point(40, 10), // Moved to make room for checkbox
                 Font = new Font("Segoe UI", 10)
             };
             filterTypeCombo.Items.AddRange(new string[] { "CONTAINS", "EQUALS" });
@@ -543,7 +554,7 @@ namespace WinFormsApp1
             {
                 Width = 220,
                 Height = 30,
-                Location = new Point(140, 10),
+                Location = new Point(150, 10), // Adjusted position
                 Font = new Font("Segoe UI", 10)
             };
 
@@ -552,7 +563,7 @@ namespace WinFormsApp1
             {
                 Width = 40,
                 Height = 30,
-                Location = new Point(370, 10),
+                Location = new Point(380, 10), // Adjusted position
                 BackColor = Color.White,
                 BorderRadius = 10,
                 Text = ""
@@ -577,7 +588,7 @@ namespace WinFormsApp1
                 Text = "X",
                 Width = 40,
                 Height = 30,
-                Location = new Point(420, 10),
+                Location = new Point(430, 10), // Adjusted position
                 BackColor = Color.FromArgb(220, 53, 69),
                 ForeColor = Color.White,
                 BorderRadius = 10,
@@ -591,7 +602,7 @@ namespace WinFormsApp1
                 ApplyFilters_Click(null, null); // Reapply filters after removing one
             };
 
-            filterContainer.Controls.AddRange(new Control[] { filterTypeCombo, filterTextBox, colorButton, removeButton });
+            filterContainer.Controls.AddRange(new Control[] { enabledCheckBox, filterTypeCombo, filterTextBox, colorButton, removeButton });
             
             // Add new filter condition
             FilterCondition condition = new FilterCondition
@@ -600,6 +611,7 @@ namespace WinFormsApp1
                 TypeComboBox = filterTypeCombo,
                 TextBox = filterTextBox,
                 ColorButton = colorButton,
+                EnabledCheckBox = enabledCheckBox,
                 HighlightColor = Color.White
             };
             filterConditions.Add(condition);
@@ -624,8 +636,11 @@ namespace WinFormsApp1
             mainTextBox.SuspendLayout();
             mainTextBox.Clear();
 
-            // If no filters are active, show all lines
-            if (filterConditions.Count == 0 || filterConditions.All(c => string.IsNullOrEmpty(c.TextBox.Text)))
+            // Get enabled filters
+            var enabledFilterConditions = filterConditions.Where(c => c.Enabled).ToList();
+
+            // If no filters are active or enabled, show all lines
+            if (enabledFilterConditions.Count == 0 || enabledFilterConditions.All(c => string.IsNullOrEmpty(c.TextBox.Text)))
             {
                 // For large files, use a StringBuilder and append in chunks
                 if (originalLines.Count > 10000)
@@ -660,8 +675,8 @@ namespace WinFormsApp1
                 return;
             }
 
-            // Prepare filter conditions for faster matching
-            var activeFilters = filterConditions
+            // Prepare filter conditions for faster matching - only use enabled filters
+            var activeFilters = enabledFilterConditions
                 .Where(c => !string.IsNullOrEmpty(c.TextBox.Text))
                 .Select(c => new {
                     Text = c.TextBox.Text,
@@ -794,20 +809,21 @@ namespace WinFormsApp1
                 {
                     try
                     {
-                        var filterData = filterConditions.Select(fc => new FilterData
+                        var filterData = filterConditions.Select(c => new FilterData
                         {
-                            FilterType = fc.TypeComboBox.Text,
-                            FilterText = fc.TextBox.Text,
-                            HighlightColor = ColorTranslator.ToHtml(fc.ColorButton.BackColor)
+                            FilterType = c.TypeComboBox.Text,
+                            FilterText = c.TextBox.Text,
+                            HighlightColor = ColorTranslator.ToHtml(c.ColorButton.BackColor),
+                            Enabled = c.EnabledCheckBox.Checked
                         }).ToList();
 
                         string jsonString = JsonSerializer.Serialize(filterData, new JsonSerializerOptions
                         {
                             WriteIndented = true
                         });
-                        File.WriteAllText(saveFileDialog.FileName, jsonString);
 
-                        MessageBox.Show("Filters saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        File.WriteAllText(saveFileDialog.FileName, jsonString);
+                        MessageBox.Show($"Filters saved to {saveFileDialog.FileName}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
                     {
@@ -883,12 +899,23 @@ namespace WinFormsApp1
                 BorderStyle = BorderStyle.None
             };
 
+            // Add enabled checkbox
+            CheckBox enabledCheckBox = new CheckBox
+            {
+                Text = "",
+                Checked = filterData.Enabled, // Set from loaded data
+                Location = new Point(10, 15),
+                Width = 20,
+                Height = 20
+            };
+            enabledCheckBox.CheckedChanged += (s, ev) => ApplyFilters_Click(null, null); // Reapply filters when checkbox changes
+
             ComboBox filterTypeCombo = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Width = 120,
+                Width = 100,
                 Height = 30,
-                Location = new Point(10, 10),
+                Location = new Point(40, 10), // Moved to make room for checkbox
                 Font = new Font("Segoe UI", 10)
             };
             filterTypeCombo.Items.AddRange(new string[] { "CONTAINS", "EQUALS" });
@@ -898,7 +925,7 @@ namespace WinFormsApp1
             {
                 Width = 220,
                 Height = 30,
-                Location = new Point(140, 10),
+                Location = new Point(150, 10), // Adjusted position
                 Text = filterData.FilterText,
                 Font = new Font("Segoe UI", 10)
             };
@@ -908,7 +935,7 @@ namespace WinFormsApp1
             {
                 Width = 40,
                 Height = 30,
-                Location = new Point(370, 10),
+                Location = new Point(380, 10), // Adjusted position
                 BackColor = ColorTranslator.FromHtml(filterData.HighlightColor),
                 BorderRadius = 10,
                 Text = ""
@@ -933,7 +960,7 @@ namespace WinFormsApp1
                 Text = "X",
                 Width = 40,
                 Height = 30,
-                Location = new Point(420, 10),
+                Location = new Point(430, 10), // Adjusted position
                 BackColor = Color.FromArgb(220, 53, 69),
                 ForeColor = Color.White,
                 BorderRadius = 10,
@@ -947,7 +974,7 @@ namespace WinFormsApp1
                 ApplyFilters_Click(null, null);
             };
 
-            filterContainer.Controls.AddRange(new Control[] { filterTypeCombo, filterTextBox, colorButton, removeButton });
+            filterContainer.Controls.AddRange(new Control[] { enabledCheckBox, filterTypeCombo, filterTextBox, colorButton, removeButton });
             
             // Add new filter condition
             FilterCondition condition = new FilterCondition
@@ -956,6 +983,7 @@ namespace WinFormsApp1
                 TypeComboBox = filterTypeCombo,
                 TextBox = filterTextBox,
                 ColorButton = colorButton,
+                EnabledCheckBox = enabledCheckBox,
                 HighlightColor = ColorTranslator.FromHtml(filterData.HighlightColor)
             };
             filterConditions.Add(condition);
@@ -1031,6 +1059,8 @@ namespace WinFormsApp1
         public TextBox TextBox { get; set; }
         public Button ColorButton { get; set; }
         public Color HighlightColor { get; set; } = Color.White;
+        public CheckBox EnabledCheckBox { get; set; }
+        public bool Enabled { get => EnabledCheckBox?.Checked ?? true; }
     }
 
     public class FilterData
@@ -1038,6 +1068,7 @@ namespace WinFormsApp1
         public string FilterType { get; set; }
         public string FilterText { get; set; }
         public string HighlightColor { get; set; } = "#FFFFFF";
+        public bool Enabled { get; set; } = true;
     }
 
     public class LineNumberRichTextBox : RichTextBox
