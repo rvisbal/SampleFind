@@ -581,7 +581,7 @@ namespace WinFormsApp1
                 Width = 20,
                 Height = 20
             };
-            enabledCheckBox.CheckedChanged += (s, ev) => ApplyFilters_Click(null, null); // Reapply filters when checkbox changes
+            // Don't automatically apply filters when checkbox changes
 
             ComboBox filterTypeCombo = new ComboBox
             {
@@ -621,7 +621,7 @@ namespace WinFormsApp1
                     if (colorDialog.ShowDialog() == DialogResult.OK)
                     {
                         colorButton.BackColor = colorDialog.Color;
-                        ApplyFilters_Click(null, null); // Reapply filters to update colors
+                        // Don't automatically apply filters when color changes
                     }
                 }
             };
@@ -643,7 +643,8 @@ namespace WinFormsApp1
             {
                 filterConditionsPanel.Controls.Remove(filterContainer);
                 filterConditions.RemoveAll(f => f.Container == filterContainer);
-                ApplyFilters_Click(null, null); // Reapply filters after removing one
+                // Don't automatically apply filters when removing one
+                statusLabel.Text = "Filter removed. Click 'Apply Filters' to update.";
             };
 
             filterContainer.Controls.AddRange(new Control[] { enabledCheckBox, filterTypeCombo, filterTextBox, colorButton, removeButton });
@@ -914,11 +915,9 @@ namespace WinFormsApp1
                         {
                             AddFilterFromData(filter);
                         }
-
-                        // Apply loaded filters
-                        ApplyFilters_Click(null, null);
                         
-                        // No confirmation message
+                        // Show message to remind user to apply filters
+                        statusLabel.Text = $"Filters loaded from {openFileDialog.FileName}. Click 'Apply Filters' to use them.";
                     }
                     catch (Exception ex)
                     {
@@ -952,7 +951,7 @@ namespace WinFormsApp1
                 Width = 20,
                 Height = 20
             };
-            enabledCheckBox.CheckedChanged += (s, ev) => ApplyFilters_Click(null, null); // Reapply filters when checkbox changes
+            // Don't automatically apply filters when checkbox changes
 
             ComboBox filterTypeCombo = new ComboBox
             {
@@ -993,7 +992,7 @@ namespace WinFormsApp1
                     if (colorDialog.ShowDialog() == DialogResult.OK)
                     {
                         colorButton.BackColor = colorDialog.Color;
-                        ApplyFilters_Click(null, null);
+                        // Don't automatically apply filters when color changes
                     }
                 }
             };
@@ -1015,7 +1014,8 @@ namespace WinFormsApp1
             {
                 filterConditionsPanel.Controls.Remove(filterContainer);
                 filterConditions.RemoveAll(f => f.Container == filterContainer);
-                ApplyFilters_Click(null, null);
+                // Don't automatically apply filters when removing one
+                statusLabel.Text = "Filter removed. Click 'Apply Filters' to update.";
             };
 
             filterContainer.Controls.AddRange(new Control[] { enabledCheckBox, filterTypeCombo, filterTextBox, colorButton, removeButton });
@@ -1224,13 +1224,14 @@ namespace WinFormsApp1
                 mainTextBox.Select(0, 0);
                 mainTextBox.ResumeLayout();
                 
-                // Update status bar
-                statusLabel.Text = $"Date part removed from {originalLines.Count:N0} lines";
-                
-                // If filters were applied, reapply them to the cleaned content
+                // Inform user they need to reapply filters if needed
                 if (filterConditions.Count > 0 && filterConditions.Any(c => c.Enabled && !string.IsNullOrEmpty(c.TextBox.Text)))
                 {
-                    ApplyFilters_Click(null, null);
+                    statusLabel.Text = $"Date part removed from {originalLines.Count:N0} lines. Click 'Apply Filters' to update the view.";
+                }
+                else
+                {
+                    statusLabel.Text = $"Date part removed from {originalLines.Count:N0} lines.";
                 }
             }
             catch (Exception ex)
@@ -1335,14 +1336,14 @@ namespace WinFormsApp1
                 mainTextBox.Select(0, 0);
                 mainTextBox.ResumeLayout();
                 
-                // Update status bar
-                int linesReduced = combinedLines.Count - originalLines.Count;
-                statusLabel.Text = $"Combined identical lines: {combinedLines.Count:N0} lines (reduced by {Math.Abs(linesReduced):N0} lines)";
-                
-                // If filters were applied, reapply them to the combined content
+                // Inform user they need to reapply filters if needed
                 if (filterConditions.Count > 0 && filterConditions.Any(c => c.Enabled && !string.IsNullOrEmpty(c.TextBox.Text)))
                 {
-                    ApplyFilters_Click(null, null);
+                    statusLabel.Text = $"Combined identical lines: {combinedLines.Count:N0} lines (reduced by {Math.Abs(combinedLines.Count - originalLines.Count):N0} lines). Click 'Apply Filters' to update the view.";
+                }
+                else
+                {
+                    statusLabel.Text = $"Combined identical lines: {combinedLines.Count:N0} lines (reduced by {Math.Abs(combinedLines.Count - originalLines.Count):N0} lines).";
                 }
             }
             catch (Exception ex)
