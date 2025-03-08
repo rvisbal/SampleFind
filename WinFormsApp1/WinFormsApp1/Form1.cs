@@ -10,9 +10,186 @@ using System.Runtime.InteropServices;
 using System.Drawing.Text;
 using System.Drawing.Imaging;
 using System.Text;
+using System.ComponentModel;
 
 namespace WinFormsApp1
 {
+    // Custom rounded button class
+    public class RoundedButton : Button
+    {
+        private int borderRadius = 10;
+        private Color borderColor = Color.Silver;
+        private Color hoverBackColor;
+        private Color hoverForeColor;
+        private Color pressedBackColor;
+        private bool isHovering = false;
+        private bool isPressed = false;
+        private Color defaultBackColor;
+
+        [Category("Appearance")]
+        public int BorderRadius
+        {
+            get { return borderRadius; }
+            set 
+            { 
+                borderRadius = value;
+                Invalidate();
+            }
+        }
+
+        [Category("Appearance")]
+        public Color BorderColor
+        {
+            get { return borderColor; }
+            set 
+            { 
+                borderColor = value;
+                Invalidate();
+            }
+        }
+
+        [Category("Appearance")]
+        public Color HoverBackColor
+        {
+            get { return hoverBackColor; }
+            set { hoverBackColor = value; }
+        }
+
+        [Category("Appearance")]
+        public Color HoverForeColor
+        {
+            get { return hoverForeColor; }
+            set { hoverForeColor = value; }
+        }
+
+        [Category("Appearance")]
+        public Color PressedBackColor
+        {
+            get { return pressedBackColor; }
+            set { pressedBackColor = value; }
+        }
+
+        public RoundedButton()
+        {
+            FlatStyle = FlatStyle.Flat;
+            FlatAppearance.BorderSize = 0;
+            Size = new Size(150, 40);
+            BackColor = Color.FromArgb(60, 141, 188);
+            defaultBackColor = BackColor; // Store the default back color
+            ForeColor = Color.White;
+            hoverBackColor = Color.FromArgb(45, 125, 154);
+            hoverForeColor = Color.White;
+            pressedBackColor = Color.FromArgb(25, 105, 134);
+            Font = new Font("Segoe UI", 10F);
+            Cursor = Cursors.Hand;
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            
+            Rectangle rectSurface = this.ClientRectangle;
+            Rectangle rectBorder = Rectangle.Inflate(rectSurface, -1, -1);
+            int smoothSize = 2;
+            
+            if (borderRadius > 2) // Rounded button
+            {
+                using (GraphicsPath pathSurface = GetFigurePath(rectSurface, borderRadius))
+                using (GraphicsPath pathBorder = GetFigurePath(rectBorder, borderRadius - 1))
+                using (Pen penSurface = new Pen(this.Parent.BackColor, smoothSize))
+                using (Pen penBorder = new Pen(borderColor, 1))
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    
+                    // Button surface
+                    this.Region = new Region(pathSurface);
+                    
+                    // Draw surface border for HD result
+                    e.Graphics.DrawPath(penSurface, pathSurface);
+                    
+                    // Button border
+                    if (borderColor != Color.Transparent)
+                        e.Graphics.DrawPath(penBorder, pathBorder);
+                }
+            }
+            else // Normal button
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.None;
+                
+                // Button surface
+                this.Region = new Region(rectSurface);
+                
+                // Button border
+                if (borderColor != Color.Transparent)
+                    using (Pen penBorder = new Pen(borderColor, 1))
+                        e.Graphics.DrawRectangle(penBorder, 0, 0, this.Width - 1, this.Height - 1);
+            }
+        }
+
+        private GraphicsPath GetFigurePath(Rectangle rect, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            float curveSize = radius * 2F;
+            
+            path.StartFigure();
+            path.AddArc(rect.X, rect.Y, curveSize, curveSize, 180, 90);
+            path.AddArc(rect.Right - curveSize, rect.Y, curveSize, curveSize, 270, 90);
+            path.AddArc(rect.Right - curveSize, rect.Bottom - curveSize, curveSize, curveSize, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - curveSize, curveSize, curveSize, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        protected override void OnMouseEnter(EventArgs e)
+        {
+            base.OnMouseEnter(e);
+            isHovering = true;
+            if (HoverBackColor != Color.Empty)
+                BackColor = HoverBackColor;
+            if (HoverForeColor != Color.Empty)
+                ForeColor = HoverForeColor;
+            Invalidate();
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            base.OnMouseLeave(e);
+            isHovering = false;
+            isPressed = false;
+            
+            // Reset to original colors
+            BackColor = defaultBackColor;
+            ForeColor = DefaultForeColor;
+            
+            Invalidate();
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            isPressed = true;
+            if (PressedBackColor != Color.Empty)
+                BackColor = PressedBackColor;
+            Invalidate();
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            isPressed = false;
+            if (isHovering)
+            {
+                if (HoverBackColor != Color.Empty)
+                    BackColor = HoverBackColor;
+            }
+            else
+            {
+                BackColor = FlatAppearance.MouseOverBackColor;
+            }
+            Invalidate();
+        }
+    }
+
     public partial class Form1 : Form
     {
         private List<FilterCondition> filterConditions = new List<FilterCondition>();
@@ -104,6 +281,22 @@ namespace WinFormsApp1
             statusStrip.BringToFront();
         }
 
+        // Helper method to create a styled button
+        private RoundedButton CreateStyledButton(string text, int width, int height, Point location, Color backColor)
+        {
+            return new RoundedButton
+            {
+                Text = text,
+                Width = width,
+                Height = height,
+                Location = location,
+                BackColor = backColor,
+                ForeColor = Color.White,
+                BorderRadius = 15,
+                Font = new Font("Segoe UI", 10)
+            };
+        }
+
         private void CreateFilterForm()
         {
             filterForm = new Form
@@ -126,56 +319,41 @@ namespace WinFormsApp1
                 BackColor = Color.FromArgb(245, 245, 245)
             };
 
-            Button addFilterButton = new Button
-            {
-                Text = "Add Filter",
-                Width = 120,
-                Height = 35,
-                Location = new Point(10, 12),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(40, 167, 69),
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 10)
-            };
+            // Create styled buttons
+            RoundedButton addFilterButton = CreateStyledButton(
+                "Add Filter", 
+                120, 
+                35, 
+                new Point(10, 12), 
+                Color.FromArgb(40, 167, 69)
+            );
             addFilterButton.Click += AddFilter_Click;
 
-            Button applyButton = new Button
-            {
-                Text = "Apply Filters",
-                Width = 120,
-                Height = 35,
-                Location = new Point(140, 12),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(0, 123, 255),
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 10)
-            };
+            RoundedButton applyButton = CreateStyledButton(
+                "Apply Filters", 
+                120, 
+                35, 
+                new Point(140, 12), 
+                Color.FromArgb(0, 123, 255)
+            );
             applyButton.Click += ApplyFilters_Click;
 
-            Button loadButton = new Button
-            {
-                Text = "Load Filters",
-                Width = 120,
-                Height = 35,
-                Location = new Point(270, 12),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(108, 117, 125),
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 10)
-            };
+            RoundedButton loadButton = CreateStyledButton(
+                "Load Filters", 
+                120, 
+                35, 
+                new Point(270, 12), 
+                Color.FromArgb(108, 117, 125)
+            );
             loadButton.Click += LoadFilters_Click;
 
-            Button saveButton = new Button
-            {
-                Text = "Save Filters",
-                Width = 120,
-                Height = 35,
-                Location = new Point(400, 12),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(23, 162, 184),
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 10)
-            };
+            RoundedButton saveButton = CreateStyledButton(
+                "Save Filters", 
+                120, 
+                35, 
+                new Point(400, 12), 
+                Color.FromArgb(255, 193, 7)
+            );
             saveButton.Click += SaveFilters_Click;
 
             topPanel.Controls.AddRange(new Control[] { addFilterButton, applyButton, loadButton, saveButton });
@@ -369,13 +547,14 @@ namespace WinFormsApp1
                 Font = new Font("Segoe UI", 10)
             };
 
-            Button colorButton = new Button
+            // Create a rounded color button
+            RoundedButton colorButton = new RoundedButton
             {
                 Width = 40,
                 Height = 30,
                 Location = new Point(370, 10),
                 BackColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
+                BorderRadius = 10,
                 Text = ""
             };
 
@@ -392,15 +571,16 @@ namespace WinFormsApp1
                 }
             };
 
-            Button removeButton = new Button
+            // Create a rounded remove button
+            RoundedButton removeButton = new RoundedButton
             {
                 Text = "X",
                 Width = 40,
                 Height = 30,
                 Location = new Point(420, 10),
-                FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(220, 53, 69),
                 ForeColor = Color.White,
+                BorderRadius = 10,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold)
             };
 
@@ -723,13 +903,14 @@ namespace WinFormsApp1
                 Font = new Font("Segoe UI", 10)
             };
 
-            Button colorButton = new Button
+            // Create a rounded color button
+            RoundedButton colorButton = new RoundedButton
             {
                 Width = 40,
                 Height = 30,
                 Location = new Point(370, 10),
                 BackColor = ColorTranslator.FromHtml(filterData.HighlightColor),
-                FlatStyle = FlatStyle.Flat,
+                BorderRadius = 10,
                 Text = ""
             };
 
@@ -746,15 +927,16 @@ namespace WinFormsApp1
                 }
             };
 
-            Button removeButton = new Button
+            // Create a rounded remove button
+            RoundedButton removeButton = new RoundedButton
             {
                 Text = "X",
                 Width = 40,
                 Height = 30,
                 Location = new Point(420, 10),
-                FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(220, 53, 69),
                 ForeColor = Color.White,
+                BorderRadius = 10,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold)
             };
 
