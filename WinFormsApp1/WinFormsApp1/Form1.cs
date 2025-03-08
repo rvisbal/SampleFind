@@ -380,25 +380,33 @@ namespace WinFormsApp1
 
             topPanel.Controls.AddRange(new Control[] { addFilterButton, applyButton, loadButton, saveButton });
 
-            // Add a container panel for the filters with a border
+            // Create filter container panel
             Panel filterContainerPanel = new Panel
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(10),
-                BackColor = Color.White
+                BackColor = Color.FromArgb(250, 250, 250)
             };
-            
-            // Panel for filter conditions
+
+            // Create a scrollable panel for filter conditions
+            Panel filterScrollPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true, // Enable scrolling
+                Padding = new Padding(0, 0, 5, 0) // Add padding for scrollbar
+            };
+
+            // Create filter conditions panel inside the scroll panel
             Panel filterConditionsPanel = new Panel
             {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                Padding = new Padding(5),
                 Name = "filterConditionsPanel",
-                Dock = DockStyle.Fill,
-                AutoScroll = true,
-                Padding = new Padding(10),
-                BackColor = Color.FromArgb(240, 240, 240)
+                Width = filterContainerPanel.Width - 30 // Make slightly narrower to accommodate scrollbar
             };
-            
-            // Add an explanatory label at the top of the conditions panel
+
+            // Add explanation label
             Label explanationLabel = new Label
             {
                 Text = "Add filters to show only lines that match the criteria. Each filter is applied with OR logic.",
@@ -409,11 +417,11 @@ namespace WinFormsApp1
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(5)
             };
-            
             filterConditionsPanel.Controls.Add(explanationLabel);
-            filterContainerPanel.Controls.Add(filterConditionsPanel);
 
-            // Add panels to form
+            // Add panels to form in the correct hierarchy
+            filterScrollPanel.Controls.Add(filterConditionsPanel);
+            filterContainerPanel.Controls.Add(filterScrollPanel);
             filterForm.Controls.Add(filterContainerPanel);
             filterForm.Controls.Add(topPanel);
         }
