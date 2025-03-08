@@ -437,28 +437,39 @@ namespace WinFormsApp1
 
                 if (!filterForm.Visible)
                 {
-                    // Position the filter form to the right of the main form with proper spacing
-                    // and ensure it doesn't overlap with the main form
-                    int filterFormX = this.Location.X + this.Width + 10; // Add 10px spacing
-                    int filterFormY = this.Location.Y;
+                    // Always position the filter form directly to the right of the main form
+                    int filterFormX = this.Right;
+                    int filterFormY = this.Top;
                     
                     // Make sure the filter form is visible on screen
                     Rectangle screenBounds = Screen.FromControl(this).Bounds;
                     if (filterFormX + filterForm.Width > screenBounds.Right)
                     {
-                        // If it would go off screen, position it to the left of the main form instead
-                        filterFormX = this.Location.X - filterForm.Width - 10;
+                        // If it would go off screen to the right, position it to the left of the main form
+                        filterFormX = this.Left - filterForm.Width;
                         
-                        // If it would still be off screen, just position it at the right edge of the screen
+                        // If it would still be off screen to the left, position it at the same X as the main form
+                        // but offset it vertically to avoid complete overlap
                         if (filterFormX < screenBounds.Left)
                         {
-                            filterFormX = screenBounds.Right - filterForm.Width;
-                            filterFormY = this.Location.Y + 50; // Offset it vertically a bit
+                            filterFormX = this.Left;
+                            filterFormY = this.Top + 50; // Offset vertically
                         }
                     }
                     
+                    // Set the position and ensure it's a child of the main form
+                    filterForm.StartPosition = FormStartPosition.Manual;
                     filterForm.Location = new Point(filterFormX, filterFormY);
-                    filterForm.Show(this);
+                    filterForm.Owner = this; // Make it a child window of the main form
+                    filterForm.Show();
+                    
+                    // Bring the filter form to the front
+                    filterForm.BringToFront();
+                    
+                    // Ensure the filter form stays on top of the main form
+                    filterForm.TopMost = true;
+                    Application.DoEvents();
+                    filterForm.TopMost = false;
                 }
                 else
                 {
