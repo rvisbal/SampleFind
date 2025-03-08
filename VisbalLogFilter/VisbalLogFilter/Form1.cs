@@ -31,6 +31,9 @@ namespace VisbalLogFilter
         private TabPage filtersTabPage;
         private TabPage replaceTabPage;
 
+        // Add a field for the AppearanceLibrary
+        private AppearanceLibrary appearanceLibrary;
+
         [DllImport("Shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr ExtractIcon(IntPtr hInst, string lpszExeFileName, int nIconIndex);
 
@@ -372,247 +375,21 @@ namespace VisbalLogFilter
 
         private void SetupAppearanceTab()
         {
-            // Create a panel for the appearance settings
-            var appearancePanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(10)
-            };
-
             // Get the Appearance tab page
             TabPage appearanceTabPage = tabControl.TabPages[2]; // Use index instead of name
 
-            // Font Type section
-            var fontTypeLabel = new Label
-            {
-                Text = "Font Type:",
-                Location = new Point(10, 20),
-                AutoSize = true
-            };
-
-            var fontTypeComboBox = new ComboBox
-            {
-                Location = new Point(150, 20),
-                Width = 200,
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-
-            // Add common monospace fonts
-            fontTypeComboBox.Items.AddRange(new object[] { 
-                "Consolas", 
-                "Courier New", 
-                "Lucida Console", 
-                "Monaco", 
-                "DejaVu Sans Mono" 
-            });
-
-            // Set current font
-            fontTypeComboBox.SelectedItem = mainTextBox.Font.FontFamily.Name;
-            if (fontTypeComboBox.SelectedIndex == -1 && fontTypeComboBox.Items.Count > 0)
-            {
-                fontTypeComboBox.SelectedIndex = 0; // Default to first font if current not in list
-            }
-
-            // Font Size section
-            var fontSizeLabel = new Label
-            {
-                Text = "Font Size:",
-                Location = new Point(10, 60),
-                AutoSize = true
-            };
-
-            var fontSizeComboBox = new ComboBox
-            {
-                Location = new Point(150, 60),
-                Width = 100,
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-
-            // Add common font sizes
-            fontSizeComboBox.Items.AddRange(new object[] { "8", "9", "10", "11", "12", "14", "16", "18", "20" });
-
-            // Set current font size
-            fontSizeComboBox.SelectedItem = mainTextBox.Font.Size.ToString("0");
-            if (fontSizeComboBox.SelectedIndex == -1 && fontSizeComboBox.Items.Count > 0)
-            {
-                fontSizeComboBox.SelectedIndex = 2; // Default to 10pt if current not in list
-            }
-
-            // Text Color section
-            var textColorLabel = new Label
-            {
-                Text = "Text Color:",
-                Location = new Point(10, 100),
-                AutoSize = true
-            };
-
-            var textColorButton = new Button
-            {
-                Text = "Choose Color",
-                Location = new Point(150, 100),
-                Width = 120,
-                BackColor = mainTextBox.ForeColor,
-                ForeColor = ContrastColor(mainTextBox.ForeColor)
-            };
-
-            textColorButton.Click += (s, e) =>
-            {
-                using (var colorDialog = new ColorDialog())
-                {
-                    colorDialog.Color = textColorButton.BackColor;
-                    if (colorDialog.ShowDialog() == DialogResult.OK)
-                    {
-                        textColorButton.BackColor = colorDialog.Color;
-                        textColorButton.ForeColor = ContrastColor(colorDialog.Color);
-                    }
-                }
-            };
-
-            // Background Color section
-            var bgColorLabel = new Label
-            {
-                Text = "Background Color:",
-                Location = new Point(10, 140),
-                AutoSize = true
-            };
-
-            var bgColorButton = new Button
-            {
-                Text = "Choose Color",
-                Location = new Point(150, 140),
-                Width = 120,
-                BackColor = mainTextBox.BackColor,
-                ForeColor = ContrastColor(mainTextBox.BackColor)
-            };
-
-            bgColorButton.Click += (s, e) =>
-            {
-                using (var colorDialog = new ColorDialog())
-                {
-                    colorDialog.Color = bgColorButton.BackColor;
-                    if (colorDialog.ShowDialog() == DialogResult.OK)
-                    {
-                        bgColorButton.BackColor = colorDialog.Color;
-                        bgColorButton.ForeColor = ContrastColor(colorDialog.Color);
-                    }
-                }
-            };
-
-            // Preview section
-            var previewLabel = new Label
-            {
-                Text = "Preview:",
-                Location = new Point(10, 180),
-                AutoSize = true
-            };
-
-            var previewTextBox = new RichTextBox
-            {
-                Location = new Point(10, 210),
-                Size = new Size(650, 150),
-                Font = mainTextBox.Font,
-                ForeColor = mainTextBox.ForeColor,
-                BackColor = mainTextBox.BackColor,
-                Text = "This is a preview of how your text will look.\r\nABCDEFGHIJKLMNOPQRSTUVWXYZ\r\nabcdefghijklmnopqrstuvwxyz\r\n0123456789\r\n!@#$%^&*()_+-=[]{}|;':\",./<>?"
-            };
-
-            // Update preview when settings change
-            EventHandler updatePreview = (s, e) =>
-            {
-                try
-                {
-                    string fontName = fontTypeComboBox.SelectedItem?.ToString() ?? "Consolas";
-                    float fontSize = float.Parse(fontSizeComboBox.SelectedItem?.ToString() ?? "10");
-                    previewTextBox.Font = new Font(fontName, fontSize);
-                    previewTextBox.ForeColor = textColorButton.BackColor;
-                    previewTextBox.BackColor = bgColorButton.BackColor;
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error updating preview: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            };
-
-            fontTypeComboBox.SelectedIndexChanged += updatePreview;
-            fontSizeComboBox.SelectedIndexChanged += updatePreview;
-            textColorButton.Click += updatePreview;
-            bgColorButton.Click += updatePreview;
-
-            // Apply button
-            var applyButton = UIControlsLibrary.CreateStyledButton(
-                "Apply Changes", 
-                150, 
-                40, 
-                new Point(510, 380), 
-                Color.FromArgb(33, 150, 243)
-            );
-
-            applyButton.Click += (s, e) =>
-            {
-                try
-                {
-                    string fontName = fontTypeComboBox.SelectedItem?.ToString() ?? "Consolas";
-                    float fontSize = float.Parse(fontSizeComboBox.SelectedItem?.ToString() ?? "10");
-                    
-                    // Apply changes to main text box
-                    mainTextBox.Font = new Font(fontName, fontSize);
-                    mainTextBox.ForeColor = textColorButton.BackColor;
-                    mainTextBox.BackColor = bgColorButton.BackColor;
-                    
-                    MessageBox.Show("Appearance settings applied successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error applying settings: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            };
-
-            // Reset button
-            var resetButton = UIControlsLibrary.CreateStyledButton(
-                "Reset to Default", 
-                150, 
-                40, 
-                new Point(350, 380), 
-                Color.FromArgb(244, 67, 54)
-            );
-
-            resetButton.Click += (s, e) =>
-            {
-                // Reset to default values
-                fontTypeComboBox.SelectedItem = "Consolas";
-                fontSizeComboBox.SelectedItem = "10";
-                textColorButton.BackColor = Color.Black;
-                textColorButton.ForeColor = Color.White;
-                bgColorButton.BackColor = Color.White;
-                bgColorButton.ForeColor = Color.Black;
-                
-                // Update preview
-                updatePreview(s, e);
-            };
-
-            // Add controls to panel
-            appearancePanel.Controls.AddRange(new Control[] {
-                fontTypeLabel, fontTypeComboBox,
-                fontSizeLabel, fontSizeComboBox,
-                textColorLabel, textColorButton,
-                bgColorLabel, bgColorButton,
-                previewLabel, previewTextBox,
-                applyButton, resetButton
-            });
-
-            // Add panel to tab page
-            appearanceTabPage.Controls.Add(appearancePanel);
-        }
-
-        // Helper method to determine contrasting text color for a background
-        private Color ContrastColor(Color color)
-        {
-            // Calculate the perceptive luminance (perceived brightness)
-            // This formula is based on human perception of color
-            double luminance = (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255;
+            // Initialize the AppearanceLibrary
+            appearanceLibrary = new AppearanceLibrary(this, mainTextBox);
             
-            // If the color is bright, return black; otherwise, return white
-            return luminance > 0.5 ? Color.Black : Color.White;
+            // Create the appearance UI
+            appearanceLibrary.CreateAppearanceUI(appearanceTabPage);
+            
+            // Subscribe to appearance changed events
+            appearanceLibrary.AppearanceChanged += (sender, e) =>
+            {
+                // Update status
+                statusLabel.Text = $"Appearance settings updated: Font={e.Settings.FontName}, Size={e.Settings.FontSize}";
+            };
         }
 
         private void ShowFilters_Click(object sender, EventArgs e)
@@ -808,6 +585,7 @@ namespace VisbalLogFilter
                 Tag = "FilterColorButton"
             };
 
+            // Set up event handlers after all controls are created
             colorButton.Click += async (s, ev) =>
             {
                 // Ensure we're working with the correct button
@@ -1211,6 +989,7 @@ namespace VisbalLogFilter
                 Tag = "FilterColorButton"
             };
 
+            // Set up event handlers after all controls are created
             colorButton.Click += async (s, ev) =>
             {
                 // Ensure we're working with the correct button
