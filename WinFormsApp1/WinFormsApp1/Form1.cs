@@ -72,10 +72,11 @@ namespace WinFormsApp1
             statusStrip.Items.Add(statusLabel);
             this.Controls.Add(statusStrip);
 
-            // Container panel for layout
+            // Container panel for layout - make sure it's positioned correctly
             Panel containerPanel = new Panel
             {
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill,
+                Padding = new Padding(0, menuStrip.Height, 0, statusStrip.Height) // Add padding to avoid overlap
             };
             this.Controls.Add(containerPanel);
 
@@ -83,7 +84,8 @@ namespace WinFormsApp1
             mainTextBox = new LineNumberRichTextBox
             {
                 Dock = DockStyle.Fill,
-                ShowLineNumbers = false
+                ShowLineNumbers = false,
+                BorderStyle = BorderStyle.None
             };
 
             containerPanel.Controls.Add(mainTextBox);
@@ -96,6 +98,10 @@ namespace WinFormsApp1
 
             // Create filter form
             CreateFilterForm();
+            
+            // Make sure controls are in the correct z-order
+            menuStrip.BringToFront();
+            statusStrip.BringToFront();
         }
 
         private void CreateFilterForm()
@@ -223,8 +229,28 @@ namespace WinFormsApp1
 
                 if (!filterForm.Visible)
                 {
+                    // Position the filter form to the right of the main form with proper spacing
+                    // and ensure it doesn't overlap with the main form
+                    int filterFormX = this.Location.X + this.Width + 10; // Add 10px spacing
+                    int filterFormY = this.Location.Y;
+                    
+                    // Make sure the filter form is visible on screen
+                    Rectangle screenBounds = Screen.FromControl(this).Bounds;
+                    if (filterFormX + filterForm.Width > screenBounds.Right)
+                    {
+                        // If it would go off screen, position it to the left of the main form instead
+                        filterFormX = this.Location.X - filterForm.Width - 10;
+                        
+                        // If it would still be off screen, just position it at the right edge of the screen
+                        if (filterFormX < screenBounds.Left)
+                        {
+                            filterFormX = screenBounds.Right - filterForm.Width;
+                            filterFormY = this.Location.Y + 50; // Offset it vertically a bit
+                        }
+                    }
+                    
+                    filterForm.Location = new Point(filterFormX, filterFormY);
                     filterForm.Show(this);
-                    filterForm.Location = new Point(this.Location.X + this.Width, this.Location.Y);
                 }
                 else
                 {
