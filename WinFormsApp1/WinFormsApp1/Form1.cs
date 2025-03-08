@@ -198,6 +198,7 @@ namespace WinFormsApp1
         private LineNumberRichTextBox mainTextBox;
         private StatusStrip statusStrip;
         private ToolStripStatusLabel statusLabel;
+        private string lastOpenedFilePath = string.Empty;
 
         [DllImport("Shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr ExtractIcon(IntPtr hInst, string lpszExeFileName, int nIconIndex);
@@ -228,6 +229,10 @@ namespace WinFormsApp1
             ToolStripMenuItem fileMenu = new ToolStripMenuItem("File");
             ToolStripMenuItem openFileMenuItem = new ToolStripMenuItem("Open File", null, OpenFile_Click);
             fileMenu.DropDownItems.Add(openFileMenuItem);
+
+            // Add Save Content menu item
+            ToolStripMenuItem saveContentMenuItem = new ToolStripMenuItem("Save Content", null, SaveContent_Click);
+            fileMenu.DropDownItems.Add(saveContentMenuItem);
 
             ToolStripMenuItem viewMenu = new ToolStripMenuItem("View");
             ToolStripMenuItem showFiltersMenuItem = new ToolStripMenuItem("Show Filters", null, ShowFilters_Click);
@@ -454,6 +459,9 @@ namespace WinFormsApp1
                 {
                     try
                     {
+                        // Store the file path
+                        lastOpenedFilePath = openFileDialog.FileName;
+                        
                         // Read all lines and store them
                         originalLines = File.ReadAllLines(openFileDialog.FileName).ToList();
                         
@@ -1047,6 +1055,67 @@ namespace WinFormsApp1
                     // Log error but don't show message box on startup
                     Console.WriteLine($"Error loading default filters: {ex.Message}");
                     statusLabel.Text = "Error loading default filters";
+                }
+            }
+        }
+
+        private void SaveContent_Click(object sender, EventArgs e)
+        {
+            // Check if there's content to save
+            if (string.IsNullOrEmpty(mainTextBox.Text))
+            {
+                MessageBox.Show("There is no content to save.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "Text files (*.txt)|*.txt|Log files (*.log)|*.log|All files (*.*)|*.*";
+                saveFileDialog.FilterIndex = 1;
+                saveFileDialog.DefaultExt = "txt";
+                saveFileDialog.Title = "Save Current Content";
+
+                // If a file was previously opened, suggest its name for saving
+                if (originalLines.Count > 0)
+                {
+                    try
+                    {
+                        string fileName = Path.GetFileNameWithoutExtension(lastOpenedFilePath);
+                        if (!string.IsNullOrEmpty(fileName))
+                        {
+                            saveFileDialog.FileName = $"{fileName}_filtered.txt";
+                        }
+                    }
+                    catch
+                    {
+                        // If there's any error getting the filename, just use a default
+                        saveFileDialog.FileName = "filtered_content.txt";
+                    }
+                }
+                else
+                {
+                    saveFileDialog.FileName = "content.txt";
+                }
+
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        // Save the current content of the text box
+                        File.WriteAllText(saveFileDialog.FileName, mainTextBox.Text);
+                        
+                        // Show success message
+                        statusLabel.Text = $"Content saved to {saveFileDialog.FileName}";
+                        
+                        // Optional: Show a message box for confirmation
+                        MessageBox.Show($"Content successfully saved to {saveFileDialog.FileName}", "Success", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error saving content: {ex.Message}", "Error", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
             }
         }
