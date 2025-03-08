@@ -271,6 +271,36 @@ namespace VisbalLogFilter.Libraries
         /// Event for progress reporting
         /// </summary>
         public event EventHandler<ProgressEventArgs> FilteringProgressReported;
+
+        /// <summary>
+        /// Reset all filter colors to white
+        /// </summary>
+        /// <param name="filterConditions">The filter conditions to reset colors for</param>
+        /// <returns>The updated filter conditions with white colors</returns>
+        public List<FilterConditionModel> ResetAllColors(List<FilterConditionModel> filterConditions)
+        {
+            if (filterConditions == null || filterConditions.Count == 0)
+            {
+                return filterConditions;
+            }
+
+            // Create a new list to avoid modifying the original
+            var updatedConditions = new List<FilterConditionModel>();
+            
+            foreach (var condition in filterConditions)
+            {
+                // Create a new condition with the same properties but white color
+                updatedConditions.Add(new FilterConditionModel
+                {
+                    FilterType = condition.FilterType,
+                    FilterText = condition.FilterText,
+                    HighlightColor = Color.White,
+                    Enabled = condition.Enabled
+                });
+            }
+            
+            return updatedConditions;
+        }
     }
 
     /// <summary>

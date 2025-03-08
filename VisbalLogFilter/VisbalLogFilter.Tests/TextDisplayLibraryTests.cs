@@ -67,6 +67,11 @@ namespace VisbalLogFilter.Tests
         {
             // Arrange - already done in Setup
 
+            // Set up property setter verification
+            string capturedText = null;
+            mockTextBox.SetupSet(t => t.Text = It.IsAny<string>())
+                .Callback<string>(value => capturedText = value);
+
             // Act
             textDisplayLibrary.DisplayAllLines(testLines);
             
@@ -79,9 +84,12 @@ namespace VisbalLogFilter.Tests
             mockTextBox.Verify(t => t.Clear(), Times.AtLeastOnce);
             
             // For small test data, it should set text directly
-            mockTextBox.Verify(t => t.Text = It.IsAny<string>(), Times.Once);
+            mockTextBox.VerifySet(t => t.Text = It.IsAny<string>(), Times.Once);
             mockTextBox.Verify(t => t.Select(0, 0), Times.Once);
             mockTextBox.Verify(t => t.ResumeLayout(), Times.Once);
+            
+            // Verify text was set (optional)
+            Assert.IsNotNull(capturedText, "Text should have been set");
         }
 
         [TestMethod]
@@ -107,6 +115,11 @@ namespace VisbalLogFilter.Tests
         {
             // Arrange - already done in Setup
 
+            // Set up property setter verification
+            Color capturedColor = Color.Empty;
+            mockTextBox.SetupSet(t => t.SelectionBackColor = It.IsAny<Color>())
+                .Callback<Color>(value => capturedColor = value);
+
             // Act
             textDisplayLibrary.DisplayFilteredLines(testColoredLines, testLines.Count);
             
@@ -121,8 +134,11 @@ namespace VisbalLogFilter.Tests
             // For small test data, it should append text directly
             mockTextBox.Verify(t => t.AppendText(It.IsAny<string>()), Times.AtLeast(2));
             mockTextBox.Verify(t => t.Select(It.IsAny<int>(), It.IsAny<int>()), Times.AtLeast(3)); // 2 for colors + 1 for reset
-            mockTextBox.Verify(t => t.SelectionBackColor = It.IsAny<Color>(), Times.Exactly(2));
+            mockTextBox.VerifySet(t => t.SelectionBackColor = It.IsAny<Color>(), Times.Exactly(2));
             mockTextBox.Verify(t => t.ResumeLayout(), Times.Once);
+            
+            // Verify color was set (optional)
+            Assert.AreNotEqual(Color.Empty, capturedColor, "Color should have been set");
         }
 
         [TestMethod]
@@ -156,6 +172,11 @@ namespace VisbalLogFilter.Tests
                 "Final line with no special content"
             };
 
+            // Set up property setter verification
+            string capturedText = null;
+            mockTextBox.SetupSet(t => t.Text = It.IsAny<string>())
+                .Callback<string>(value => capturedText = value);
+
             // Act
             textDisplayLibrary.DisplayModifiedLines(modifiedLines, 2);
             
@@ -168,12 +189,15 @@ namespace VisbalLogFilter.Tests
             mockTextBox.Verify(t => t.Clear(), Times.AtLeastOnce);
             
             // For small test data, it should set text directly
-            mockTextBox.Verify(t => t.Text = It.IsAny<string>(), Times.Once);
+            mockTextBox.VerifySet(t => t.Text = It.IsAny<string>(), Times.Once);
             mockTextBox.Verify(t => t.Select(0, 0), Times.Once);
             mockTextBox.Verify(t => t.ResumeLayout(), Times.Once);
             
             // Check message contains replacement count
             Assert.IsTrue(resultMessage.Contains("2"), "Message should include replacement count");
+            
+            // Verify text was set (optional)
+            Assert.IsNotNull(capturedText, "Text should have been set");
         }
 
         [TestMethod]

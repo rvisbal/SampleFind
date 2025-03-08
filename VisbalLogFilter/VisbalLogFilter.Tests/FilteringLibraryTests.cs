@@ -202,6 +202,60 @@ namespace VisbalLogFilter.Tests
             Assert.AreEqual(Common.ColorToHtml(testConditions[0].HighlightColor), filterData[0].HighlightColor, "Color should be preserved");
         }
 
+        [TestMethod]
+        public void ResetAllColors_ShouldSetAllColorsToWhite()
+        {
+            // Arrange
+            var coloredConditions = new List<FilterConditionModel>
+            {
+                new FilterConditionModel
+                {
+                    FilterType = "CONTAINS",
+                    FilterText = "ERROR",
+                    HighlightColor = Color.Red,
+                    Enabled = true
+                },
+                new FilterConditionModel
+                {
+                    FilterType = "EQUALS",
+                    FilterText = "WARNING",
+                    HighlightColor = Color.Yellow,
+                    Enabled = false
+                }
+            };
+
+            // Act
+            var result = filteringLibrary.ResetAllColors(coloredConditions);
+
+            // Assert
+            Assert.AreEqual(coloredConditions.Count, result.Count, "Should return same number of conditions");
+            
+            foreach (var condition in result)
+            {
+                Assert.AreEqual(Color.White, condition.HighlightColor, "All colors should be reset to white");
+            }
+            
+            // Verify original conditions are not modified
+            Assert.AreEqual(Color.Red, coloredConditions[0].HighlightColor, "Original conditions should not be modified");
+            Assert.AreEqual(Color.Yellow, coloredConditions[1].HighlightColor, "Original conditions should not be modified");
+        }
+
+        [TestMethod]
+        public void ResetAllColors_WithNullOrEmptyInput_ShouldReturnSameInput()
+        {
+            // Arrange
+            List<FilterConditionModel> nullConditions = null;
+            var emptyConditions = new List<FilterConditionModel>();
+
+            // Act
+            var resultNull = filteringLibrary.ResetAllColors(nullConditions);
+            var resultEmpty = filteringLibrary.ResetAllColors(emptyConditions);
+
+            // Assert
+            Assert.AreEqual(nullConditions, resultNull, "Should return null for null input");
+            Assert.AreEqual(0, resultEmpty.Count, "Should return empty list for empty input");
+        }
+
         [TestCleanup]
         public void Cleanup()
         {

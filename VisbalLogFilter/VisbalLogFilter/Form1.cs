@@ -11,191 +11,16 @@ using System.Drawing.Text;
 using System.Drawing.Imaging;
 using System.Text;
 using System.ComponentModel;
+using VisbalLogFilter.Libraries;
 
 namespace VisbalLogFilter
 {
-    // Custom rounded button class
-    public class RoundedButton : Button
-    {
-        private int borderRadius = 10;
-        private Color borderColor = Color.Silver;
-        private Color hoverBackColor;
-        private Color hoverForeColor;
-        private Color pressedBackColor;
-        private bool isHovering = false;
-        private bool isPressed = false;
-        private Color defaultBackColor;
-
-        [Category("Appearance")]
-        public int BorderRadius
-        {
-            get { return borderRadius; }
-            set 
-            { 
-                borderRadius = value;
-                Invalidate();
-            }
-        }
-
-        [Category("Appearance")]
-        public Color BorderColor
-        {
-            get { return borderColor; }
-            set 
-            { 
-                borderColor = value;
-                Invalidate();
-            }
-        }
-
-        [Category("Appearance")]
-        public Color HoverBackColor
-        {
-            get { return hoverBackColor; }
-            set { hoverBackColor = value; }
-        }
-
-        [Category("Appearance")]
-        public Color HoverForeColor
-        {
-            get { return hoverForeColor; }
-            set { hoverForeColor = value; }
-        }
-
-        [Category("Appearance")]
-        public Color PressedBackColor
-        {
-            get { return pressedBackColor; }
-            set { pressedBackColor = value; }
-        }
-
-        public RoundedButton()
-        {
-            FlatStyle = FlatStyle.Flat;
-            FlatAppearance.BorderSize = 0;
-            Size = new Size(150, 40);
-            BackColor = Color.FromArgb(60, 141, 188);
-            defaultBackColor = BackColor; // Store the default back color
-            ForeColor = Color.White;
-            hoverBackColor = Color.FromArgb(45, 125, 154);
-            hoverForeColor = Color.White;
-            pressedBackColor = Color.FromArgb(25, 105, 134);
-            Font = new Font("Segoe UI", 10F);
-            Cursor = Cursors.Hand;
-        }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            base.OnPaint(e);
-            
-            Rectangle rectSurface = this.ClientRectangle;
-            Rectangle rectBorder = Rectangle.Inflate(rectSurface, -1, -1);
-            int smoothSize = 2;
-            
-            if (borderRadius > 2) // Rounded button
-            {
-                using (GraphicsPath pathSurface = GetFigurePath(rectSurface, borderRadius))
-                using (GraphicsPath pathBorder = GetFigurePath(rectBorder, borderRadius - 1))
-                using (Pen penSurface = new Pen(this.Parent.BackColor, smoothSize))
-                using (Pen penBorder = new Pen(borderColor, 1))
-                {
-                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                    
-                    // Button surface
-                    this.Region = new Region(pathSurface);
-                    
-                    // Draw surface border for HD result
-                    e.Graphics.DrawPath(penSurface, pathSurface);
-                    
-                    // Button border
-                    if (borderColor != Color.Transparent)
-                        e.Graphics.DrawPath(penBorder, pathBorder);
-                }
-            }
-            else // Normal button
-            {
-                e.Graphics.SmoothingMode = SmoothingMode.None;
-                
-                // Button surface
-                this.Region = new Region(rectSurface);
-                
-                // Button border
-                if (borderColor != Color.Transparent)
-                    using (Pen penBorder = new Pen(borderColor, 1))
-                        e.Graphics.DrawRectangle(penBorder, 0, 0, this.Width - 1, this.Height - 1);
-            }
-        }
-
-        private GraphicsPath GetFigurePath(Rectangle rect, int radius)
-        {
-            GraphicsPath path = new GraphicsPath();
-            float curveSize = radius * 2F;
-            
-            path.StartFigure();
-            path.AddArc(rect.X, rect.Y, curveSize, curveSize, 180, 90);
-            path.AddArc(rect.Right - curveSize, rect.Y, curveSize, curveSize, 270, 90);
-            path.AddArc(rect.Right - curveSize, rect.Bottom - curveSize, curveSize, curveSize, 0, 90);
-            path.AddArc(rect.X, rect.Bottom - curveSize, curveSize, curveSize, 90, 90);
-            path.CloseFigure();
-            return path;
-        }
-
-        protected override void OnMouseEnter(EventArgs e)
-        {
-            base.OnMouseEnter(e);
-            isHovering = true;
-            if (HoverBackColor != Color.Empty)
-                BackColor = HoverBackColor;
-            if (HoverForeColor != Color.Empty)
-                ForeColor = HoverForeColor;
-            Invalidate();
-        }
-
-        protected override void OnMouseLeave(EventArgs e)
-        {
-            base.OnMouseLeave(e);
-            isHovering = false;
-            isPressed = false;
-            
-            // Reset to original colors
-            BackColor = defaultBackColor;
-            ForeColor = DefaultForeColor;
-            
-            Invalidate();
-        }
-
-        protected override void OnMouseDown(MouseEventArgs e)
-        {
-            base.OnMouseDown(e);
-            isPressed = true;
-            if (PressedBackColor != Color.Empty)
-                BackColor = PressedBackColor;
-            Invalidate();
-        }
-
-        protected override void OnMouseUp(MouseEventArgs e)
-        {
-            base.OnMouseUp(e);
-            isPressed = false;
-            if (isHovering)
-            {
-                if (HoverBackColor != Color.Empty)
-                    BackColor = HoverBackColor;
-            }
-            else
-            {
-                BackColor = defaultBackColor;
-            }
-            Invalidate();
-        }
-    }
-
     public partial class Form1 : Form
     {
         private List<FilterCondition> filterConditions = new List<FilterCondition>();
         private List<string> originalLines = new List<string>();
         private Form filterForm;
-        private LineNumberRichTextBox mainTextBox;
+        private Libraries.LineNumberRichTextBox mainTextBox;
         private StatusStrip statusStrip;
         private ToolStripStatusLabel statusLabel;
         private string lastOpenedFilePath = string.Empty;
@@ -222,7 +47,25 @@ namespace VisbalLogFilter
         public Form1()
         {
             InitializeComponent();
+            
+            // Set a larger size for the main form
+            this.Size = new Size(1600, 900);
+            this.StartPosition = FormStartPosition.CenterScreen;
+            
+            // Set the form title and icon
+            this.Text = "VisbalLogFilter";
+            this.Icon = GetFolderIcon();
+            
             InitializeCustomComponents();
+            
+            // Initialize filter conditions list
+            filterConditions = new List<FilterCondition>();
+            
+            // Initialize replace conditions list
+            replaceConditions = new List<ReplaceCondition>();
+            
+            // Create the filter form
+            CreateFilterForm();
             
             // Try to load default filters if available
             LoadDefaultFilters();
@@ -230,112 +73,74 @@ namespace VisbalLogFilter
 
         private void InitializeCustomComponents()
         {
-            // Create main menu
+            // Set up the main text box with line numbers
+            mainTextBox = new Libraries.LineNumberRichTextBox
+            {
+                Dock = DockStyle.Fill,
+                ShowLineNumbers = false,
+                Font = new Font("Consolas", 9.75F),
+                BackColor = Color.White,
+                ForeColor = Color.Black,
+                BorderStyle = BorderStyle.None
+            };
+            this.Controls.Add(mainTextBox);
+
+            // Create status bar
+            statusStrip = new StatusStrip();
+            statusLabel = new ToolStripStatusLabel
+            {
+                Spring = true,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            statusStrip.Items.Add(statusLabel);
+            this.Controls.Add(statusStrip);
+
+            // Create menu
             MenuStrip menuStrip = new MenuStrip();
             
             // File menu
             ToolStripMenuItem fileMenu = new ToolStripMenuItem("File");
             ToolStripMenuItem openFileMenuItem = new ToolStripMenuItem("Open File", null, OpenFile_Click);
-            fileMenu.DropDownItems.Add(openFileMenuItem);
-
-            // Add Save Content menu item
             ToolStripMenuItem saveContentMenuItem = new ToolStripMenuItem("Save Content", null, SaveContent_Click);
-            fileMenu.DropDownItems.Add(saveContentMenuItem);
+            ToolStripMenuItem exitMenuItem = new ToolStripMenuItem("Exit", null, (s, e) => Application.Exit());
+            fileMenu.DropDownItems.AddRange(new ToolStripItem[] { openFileMenuItem, saveContentMenuItem, new ToolStripSeparator(), exitMenuItem });
 
             // View menu
             ToolStripMenuItem viewMenu = new ToolStripMenuItem("View");
-            ToolStripMenuItem showFiltersMenuItem = new ToolStripMenuItem("Show Filters", null, ShowFilters_Click);
-            ToolStripMenuItem showSidebarMenuItem = new ToolStripMenuItem("Show Line Numbers");
-            showSidebarMenuItem.Checked = false;
-            showSidebarMenuItem.Click += ShowSidebar_Click;
-            
-            viewMenu.DropDownItems.Add(showFiltersMenuItem);
-            viewMenu.DropDownItems.Add(showSidebarMenuItem);
+            ToolStripMenuItem lineNumbersMenuItem = new ToolStripMenuItem("Line Numbers", null, ShowSidebar_Click);
+            viewMenu.DropDownItems.Add(lineNumbersMenuItem);
 
             // Tools menu
             ToolStripMenuItem toolsMenu = new ToolStripMenuItem("Tools");
+            ToolStripMenuItem filtersMenuItem = new ToolStripMenuItem("Filters", null, ShowFilters_Click);
+            ToolStripMenuItem cleanDateMenuItem = new ToolStripMenuItem("Clean Date Part", null, CleanDatePart_Click);
+            ToolStripMenuItem combineMenuItem = new ToolStripMenuItem("Combine Identical Lines", null, CombineIdenticalLines_Click);
+            toolsMenu.DropDownItems.AddRange(new ToolStripItem[] { filtersMenuItem, cleanDateMenuItem, combineMenuItem });
             
-            // Add Clean Date Part menu item to Tools menu
-            ToolStripMenuItem cleanDatePartMenuItem = new ToolStripMenuItem("Clean Date Part (Remove Before '|')", null, CleanDatePart_Click);
-            toolsMenu.DropDownItems.Add(cleanDatePartMenuItem);
-            
-            // Add Combine Identical Lines menu item to Tools menu
-            ToolStripMenuItem combineIdenticalLinesMenuItem = new ToolStripMenuItem("Combine Identical Lines", null, CombineIdenticalLines_Click);
-            toolsMenu.DropDownItems.Add(combineIdenticalLinesMenuItem);
-
             // Add all menus to the menu strip
-            menuStrip.Items.Add(fileMenu);
-            menuStrip.Items.Add(viewMenu);
-            menuStrip.Items.Add(toolsMenu);
+            menuStrip.Items.AddRange(new ToolStripItem[] { fileMenu, viewMenu, toolsMenu });
             
             this.MainMenuStrip = menuStrip;
             this.Controls.Add(menuStrip);
 
-            // Create status strip
-            statusStrip = new StatusStrip();
-            statusLabel = new ToolStripStatusLabel("Ready");
-            statusStrip.Items.Add(statusLabel);
-            this.Controls.Add(statusStrip);
-
-            // Container panel for layout - make sure it's positioned correctly
-            Panel containerPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(0, menuStrip.Height, 0, statusStrip.Height) // Add padding to avoid overlap
-            };
-            this.Controls.Add(containerPanel);
-
-            // Create main text box
-            mainTextBox = new LineNumberRichTextBox
-            {
-                Dock = DockStyle.Fill,
-                ShowLineNumbers = false,
-                BorderStyle = BorderStyle.None
-            };
-
-            containerPanel.Controls.Add(mainTextBox);
-
-            // Set form properties
-            this.Text = "File Viewer";
-            this.Size = new Size(1400, 980);
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.Icon = GetFolderIcon();
-
-            // Create filter form
-            CreateFilterForm();
-            
-            // Make sure controls are in the correct z-order
+            // Ensure proper z-order
+            mainTextBox.BringToFront();
             menuStrip.BringToFront();
             statusStrip.BringToFront();
         }
 
-        // Helper method to create a styled button
-        private RoundedButton CreateStyledButton(string text, int width, int height, Point location, Color backColor)
-        {
-            return new RoundedButton
-            {
-                Text = text,
-                Width = width,
-                Height = height,
-                Location = location,
-                BackColor = backColor,
-                ForeColor = Color.White,
-                BorderRadius = 15,
-                Font = new Font("Segoe UI", 10)
-            };
-        }
-
         private void CreateFilterForm()
         {
+            // Create the filter form
             filterForm = new Form
             {
-                Text = "Filter & Replace Options",
-                Width = 700,  // Make it wider
-                Height = 700, // Make it taller
+                Text = "Settings",
+                Size = new Size(700, 700),
                 StartPosition = FormStartPosition.CenterParent,
-                FormBorderStyle = FormBorderStyle.SizableToolWindow, // Allow resizing
+                MinimizeBox = false,
                 MaximizeBox = false,
-                MinimizeBox = false
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                ShowInTaskbar = false
             };
 
             // Create tab control
@@ -345,29 +150,25 @@ namespace VisbalLogFilter
                 Padding = new Point(10, 10)
             };
 
-            // Create Filter tab
+            // Create tabs
             filtersTabPage = new TabPage("Filters");
-            filtersTabPage.Padding = new Padding(10);
-
-            // Create Replace tab
             replaceTabPage = new TabPage("Replace");
-            replaceTabPage.Padding = new Padding(10);
+            var appearanceTabPage = new TabPage("Appearance");
 
             // Add tabs to tab control
             tabControl.TabPages.Add(filtersTabPage);
             tabControl.TabPages.Add(replaceTabPage);
+            tabControl.TabPages.Add(appearanceTabPage);
 
             // Add tab control to form
             filterForm.Controls.Add(tabControl);
 
-            // Set up the Filters tab
+            // Set up the tabs
             SetupFiltersTab();
-
-            // Set up the Replace tab
             SetupReplaceTab();
+            SetupAppearanceTab();
         }
 
-        // Add a new method to set up the Filters tab
         private void SetupFiltersTab()
         {
             // Top panel for buttons
@@ -380,42 +181,46 @@ namespace VisbalLogFilter
             };
 
             // Create styled buttons
-            RoundedButton addFilterButton = CreateStyledButton(
+            var addFilterButton = UIControlsLibrary.CreateStyledButton(
                 "Add Filter", 
                 120, 
-                35, 
-                new Point(10, 12), 
-                Color.FromArgb(40, 167, 69)
+                30, 
+                new Point(10, 10), 
+                Color.FromArgb(76, 175, 80)
             );
             addFilterButton.Click += AddFilter_Click;
 
-            RoundedButton applyButton = CreateStyledButton(
+            var applyButton = UIControlsLibrary.CreateStyledButton(
                 "Apply Filters", 
                 120, 
-                35, 
-                new Point(140, 12), 
-                Color.FromArgb(0, 123, 255)
+                30, 
+                new Point(140, 10), 
+                Color.FromArgb(33, 150, 243)
             );
             applyButton.Click += ApplyFilters_Click;
 
-            RoundedButton loadButton = CreateStyledButton(
+            var loadButton = UIControlsLibrary.CreateStyledButton(
                 "Load Filters", 
                 120, 
-                35, 
-                new Point(270, 12), 
-                Color.FromArgb(108, 117, 125)
+                30, 
+                new Point(270, 10), 
+                Color.FromArgb(255, 152, 0)
             );
-            loadButton.Tag = "LoadFiltersButton";
             loadButton.Click += LoadFilters_Click;
 
-            RoundedButton saveButton = CreateStyledButton(
+            var saveButton = UIControlsLibrary.CreateStyledButton(
                 "Save Filters", 
                 120, 
-                35, 
-                new Point(400, 12), 
-                Color.FromArgb(255, 193, 7)
+                30, 
+                new Point(400, 10), 
+                Color.FromArgb(244, 67, 54)
             );
             saveButton.Click += SaveFilters_Click;
+
+            // Add a Reset Colors button
+            var resetColorsButton = UIControlsLibrary.CreateStyledButton("Reset Colors", 120, 30, new Point(filtersTabPage.Width - 140, 10), Color.DarkGray);
+            resetColorsButton.Click += ResetColors_Click;
+            filtersTabPage.Controls.Add(resetColorsButton);
 
             topPanel.Controls.AddRange(new Control[] { addFilterButton, applyButton, loadButton, saveButton });
 
@@ -467,7 +272,6 @@ namespace VisbalLogFilter
             filtersTabPage.Controls.Add(topPanel);
         }
 
-        // Add a new method to set up the Replace tab
         private void SetupReplaceTab()
         {
             // Top panel for buttons
@@ -480,40 +284,39 @@ namespace VisbalLogFilter
             };
 
             // Create styled buttons for the Replace tab
-            RoundedButton addReplaceButton = CreateStyledButton(
+            var addReplaceButton = UIControlsLibrary.CreateStyledButton(
                 "Add Replace", 
                 120, 
-                35, 
-                new Point(10, 12), 
-                Color.FromArgb(40, 167, 69)
+                30, 
+                new Point(10, 10), 
+                Color.FromArgb(76, 175, 80)
             );
             addReplaceButton.Click += AddReplace_Click;
 
-            RoundedButton applyReplaceButton = CreateStyledButton(
+            var applyReplaceButton = UIControlsLibrary.CreateStyledButton(
                 "Apply Replace", 
                 120, 
-                35, 
-                new Point(140, 12), 
-                Color.FromArgb(0, 123, 255)
+                30, 
+                new Point(140, 10), 
+                Color.FromArgb(33, 150, 243)
             );
             applyReplaceButton.Click += ApplyReplace_Click;
 
-            RoundedButton loadReplaceButton = CreateStyledButton(
+            var loadReplaceButton = UIControlsLibrary.CreateStyledButton(
                 "Load Replace", 
                 120, 
-                35, 
-                new Point(270, 12), 
-                Color.FromArgb(108, 117, 125)
+                30, 
+                new Point(270, 10), 
+                Color.FromArgb(255, 152, 0)
             );
-            loadReplaceButton.Tag = "LoadReplaceButton";
             loadReplaceButton.Click += LoadReplace_Click;
 
-            RoundedButton saveReplaceButton = CreateStyledButton(
+            var saveReplaceButton = UIControlsLibrary.CreateStyledButton(
                 "Save Replace", 
                 120, 
-                35, 
-                new Point(400, 12), 
-                Color.FromArgb(255, 193, 7)
+                30, 
+                new Point(400, 10), 
+                Color.FromArgb(244, 67, 54)
             );
             saveReplaceButton.Click += SaveReplace_Click;
 
@@ -565,6 +368,251 @@ namespace VisbalLogFilter
             // Add panels to the Replace tab
             replaceTabPage.Controls.Add(replaceContainerPanel);
             replaceTabPage.Controls.Add(topPanel);
+        }
+
+        private void SetupAppearanceTab()
+        {
+            // Create a panel for the appearance settings
+            var appearancePanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(10)
+            };
+
+            // Get the Appearance tab page
+            TabPage appearanceTabPage = tabControl.TabPages[2]; // Use index instead of name
+
+            // Font Type section
+            var fontTypeLabel = new Label
+            {
+                Text = "Font Type:",
+                Location = new Point(10, 20),
+                AutoSize = true
+            };
+
+            var fontTypeComboBox = new ComboBox
+            {
+                Location = new Point(150, 20),
+                Width = 200,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            // Add common monospace fonts
+            fontTypeComboBox.Items.AddRange(new object[] { 
+                "Consolas", 
+                "Courier New", 
+                "Lucida Console", 
+                "Monaco", 
+                "DejaVu Sans Mono" 
+            });
+
+            // Set current font
+            fontTypeComboBox.SelectedItem = mainTextBox.Font.FontFamily.Name;
+            if (fontTypeComboBox.SelectedIndex == -1 && fontTypeComboBox.Items.Count > 0)
+            {
+                fontTypeComboBox.SelectedIndex = 0; // Default to first font if current not in list
+            }
+
+            // Font Size section
+            var fontSizeLabel = new Label
+            {
+                Text = "Font Size:",
+                Location = new Point(10, 60),
+                AutoSize = true
+            };
+
+            var fontSizeComboBox = new ComboBox
+            {
+                Location = new Point(150, 60),
+                Width = 100,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            // Add common font sizes
+            fontSizeComboBox.Items.AddRange(new object[] { "8", "9", "10", "11", "12", "14", "16", "18", "20" });
+
+            // Set current font size
+            fontSizeComboBox.SelectedItem = mainTextBox.Font.Size.ToString("0");
+            if (fontSizeComboBox.SelectedIndex == -1 && fontSizeComboBox.Items.Count > 0)
+            {
+                fontSizeComboBox.SelectedIndex = 2; // Default to 10pt if current not in list
+            }
+
+            // Text Color section
+            var textColorLabel = new Label
+            {
+                Text = "Text Color:",
+                Location = new Point(10, 100),
+                AutoSize = true
+            };
+
+            var textColorButton = new Button
+            {
+                Text = "Choose Color",
+                Location = new Point(150, 100),
+                Width = 120,
+                BackColor = mainTextBox.ForeColor,
+                ForeColor = ContrastColor(mainTextBox.ForeColor)
+            };
+
+            textColorButton.Click += (s, e) =>
+            {
+                using (var colorDialog = new ColorDialog())
+                {
+                    colorDialog.Color = textColorButton.BackColor;
+                    if (colorDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        textColorButton.BackColor = colorDialog.Color;
+                        textColorButton.ForeColor = ContrastColor(colorDialog.Color);
+                    }
+                }
+            };
+
+            // Background Color section
+            var bgColorLabel = new Label
+            {
+                Text = "Background Color:",
+                Location = new Point(10, 140),
+                AutoSize = true
+            };
+
+            var bgColorButton = new Button
+            {
+                Text = "Choose Color",
+                Location = new Point(150, 140),
+                Width = 120,
+                BackColor = mainTextBox.BackColor,
+                ForeColor = ContrastColor(mainTextBox.BackColor)
+            };
+
+            bgColorButton.Click += (s, e) =>
+            {
+                using (var colorDialog = new ColorDialog())
+                {
+                    colorDialog.Color = bgColorButton.BackColor;
+                    if (colorDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        bgColorButton.BackColor = colorDialog.Color;
+                        bgColorButton.ForeColor = ContrastColor(colorDialog.Color);
+                    }
+                }
+            };
+
+            // Preview section
+            var previewLabel = new Label
+            {
+                Text = "Preview:",
+                Location = new Point(10, 180),
+                AutoSize = true
+            };
+
+            var previewTextBox = new RichTextBox
+            {
+                Location = new Point(10, 210),
+                Size = new Size(650, 150),
+                Font = mainTextBox.Font,
+                ForeColor = mainTextBox.ForeColor,
+                BackColor = mainTextBox.BackColor,
+                Text = "This is a preview of how your text will look.\r\nABCDEFGHIJKLMNOPQRSTUVWXYZ\r\nabcdefghijklmnopqrstuvwxyz\r\n0123456789\r\n!@#$%^&*()_+-=[]{}|;':\",./<>?"
+            };
+
+            // Update preview when settings change
+            EventHandler updatePreview = (s, e) =>
+            {
+                try
+                {
+                    string fontName = fontTypeComboBox.SelectedItem?.ToString() ?? "Consolas";
+                    float fontSize = float.Parse(fontSizeComboBox.SelectedItem?.ToString() ?? "10");
+                    previewTextBox.Font = new Font(fontName, fontSize);
+                    previewTextBox.ForeColor = textColorButton.BackColor;
+                    previewTextBox.BackColor = bgColorButton.BackColor;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error updating preview: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
+
+            fontTypeComboBox.SelectedIndexChanged += updatePreview;
+            fontSizeComboBox.SelectedIndexChanged += updatePreview;
+            textColorButton.Click += updatePreview;
+            bgColorButton.Click += updatePreview;
+
+            // Apply button
+            var applyButton = UIControlsLibrary.CreateStyledButton(
+                "Apply Changes", 
+                150, 
+                40, 
+                new Point(510, 380), 
+                Color.FromArgb(33, 150, 243)
+            );
+
+            applyButton.Click += (s, e) =>
+            {
+                try
+                {
+                    string fontName = fontTypeComboBox.SelectedItem?.ToString() ?? "Consolas";
+                    float fontSize = float.Parse(fontSizeComboBox.SelectedItem?.ToString() ?? "10");
+                    
+                    // Apply changes to main text box
+                    mainTextBox.Font = new Font(fontName, fontSize);
+                    mainTextBox.ForeColor = textColorButton.BackColor;
+                    mainTextBox.BackColor = bgColorButton.BackColor;
+                    
+                    MessageBox.Show("Appearance settings applied successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error applying settings: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
+
+            // Reset button
+            var resetButton = UIControlsLibrary.CreateStyledButton(
+                "Reset to Default", 
+                150, 
+                40, 
+                new Point(350, 380), 
+                Color.FromArgb(244, 67, 54)
+            );
+
+            resetButton.Click += (s, e) =>
+            {
+                // Reset to default values
+                fontTypeComboBox.SelectedItem = "Consolas";
+                fontSizeComboBox.SelectedItem = "10";
+                textColorButton.BackColor = Color.Black;
+                textColorButton.ForeColor = Color.White;
+                bgColorButton.BackColor = Color.White;
+                bgColorButton.ForeColor = Color.Black;
+                
+                // Update preview
+                updatePreview(s, e);
+            };
+
+            // Add controls to panel
+            appearancePanel.Controls.AddRange(new Control[] {
+                fontTypeLabel, fontTypeComboBox,
+                fontSizeLabel, fontSizeComboBox,
+                textColorLabel, textColorButton,
+                bgColorLabel, bgColorButton,
+                previewLabel, previewTextBox,
+                applyButton, resetButton
+            });
+
+            // Add panel to tab page
+            appearanceTabPage.Controls.Add(appearancePanel);
+        }
+
+        // Helper method to determine contrasting text color for a background
+        private Color ContrastColor(Color color)
+        {
+            // Calculate the perceptive luminance (perceived brightness)
+            // This formula is based on human perception of color
+            double luminance = (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255;
+            
+            // If the color is bright, return black; otherwise, return white
+            return luminance > 0.5 ? Color.Black : Color.White;
         }
 
         private void ShowFilters_Click(object sender, EventArgs e)
@@ -1244,13 +1292,18 @@ namespace VisbalLogFilter
 
         private void ShowSidebar_Click(object sender, EventArgs e)
         {
-            var menuItem = sender as ToolStripMenuItem;
-            if (menuItem != null)
+            // Toggle line numbers
+            bool currentState = mainTextBox.ShowLineNumbers;
+            mainTextBox.ShowLineNumbers = !currentState;
+            
+            // Update menu item checked state if sender is a ToolStripMenuItem
+            if (sender is ToolStripMenuItem menuItem)
             {
-                menuItem.Checked = !menuItem.Checked;
-                mainTextBox.ShowLineNumbers = menuItem.Checked;
-                mainTextBox.Invalidate();
+                menuItem.Checked = !currentState;
             }
+            
+            // Update status
+            statusLabel.Text = mainTextBox.ShowLineNumbers ? "Line numbers shown" : "Line numbers hidden";
         }
 
         private void LoadDefaultFilters()
@@ -1908,6 +1961,38 @@ namespace VisbalLogFilter
             replaceConditionsPanel.Controls.Add(replaceContainer);
             replaceContainer.BringToFront();
         }
+
+        private void ResetColors_Click(object sender, EventArgs e)
+        {
+            if (filterConditions.Count == 0)
+            {
+                MessageBox.Show("No filters to reset colors for.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Create a FilteringLibrary instance
+            var filteringLibrary = new Libraries.FilteringLibrary(this);
+            
+            // Convert UI filter conditions to models
+            var filterConditionModels = filterConditions.Select(c => new Libraries.FilterConditionModel
+            {
+                FilterType = c.TypeComboBox.Text,
+                FilterText = c.TextBox.Text,
+                HighlightColor = c.ColorButton.BackColor,
+                Enabled = c.EnabledCheckBox.Checked
+            }).ToList();
+            
+            // Reset all colors to white
+            var updatedConditions = filteringLibrary.ResetAllColors(filterConditionModels);
+            
+            // Update the UI filter conditions with the reset colors
+            for (int i = 0; i < filterConditions.Count; i++)
+            {
+                filterConditions[i].ColorButton.BackColor = Color.White;
+            }
+            
+            MessageBox.Show("All filter colors have been reset to white.", "Colors Reset", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
     }
 
     public class FilterCondition
@@ -1955,185 +2040,5 @@ namespace VisbalLogFilter
         public string FindText { get; set; }
         public string ReplaceText { get; set; }
         public bool Enabled { get; set; } = true;
-    }
-
-    public class LineNumberRichTextBox : RichTextBox
-    {
-        private const int WM_PAINT = 0x000F;
-        private const int WM_VSCROLL = 0x0115;
-        private const int WM_HSCROLL = 0x0114;
-        private const int LineNumberPadding = 5;
-        private const int LineNumberWidth = 45;
-        private readonly Color LineNumberColor;
-        private readonly Color GutterBackColor;
-        private readonly Color SeparatorColor;
-        private StringFormat lineNumberFormat;
-        private Font lineNumberFont;
-        private SolidBrush lineNumberBrush;
-        private SolidBrush gutterBrush;
-        private Pen separatorPen;
-        private bool isLargeFile = false;
-        private bool showLineNumbers = false;
-
-        public bool ShowLineNumbers
-        {
-            get => showLineNumbers;
-            set
-            {
-                if (showLineNumbers != value)
-                {
-                    showLineNumbers = value;
-                    UpdateTextPadding();
-                    if (!showLineNumbers)
-                    {
-                        // Force a clean redraw when hiding line numbers
-                        Invalidate();
-                    }
-                }
-            }
-        }
-
-        public LineNumberRichTextBox()
-        {
-            // Initialize readonly color fields
-            LineNumberColor = Color.FromArgb(140, 140, 140);
-            GutterBackColor = Color.FromArgb(240, 240, 240);
-            SeparatorColor = Color.FromArgb(255, 128, 0);
-
-            // Basic settings
-            this.Margin = new Padding(0);
-            this.BackColor = Color.White;
-            this.ForeColor = Color.Black;
-            this.Font = new Font("Consolas", 8.25F);
-            this.WordWrap = false;
-            this.ScrollBars = RichTextBoxScrollBars.Both;
-            this.BorderStyle = BorderStyle.None;
-            this.DetectUrls = false;
-            this.HideSelection = false;
-
-            // Set initial padding
-            this.SelectionIndent = 5;  // Start with minimum padding
-
-            // Enable double buffering
-            SetStyle(ControlStyles.OptimizedDoubleBuffer | 
-                    ControlStyles.AllPaintingInWmPaint |
-                    ControlStyles.ResizeRedraw, true);
-        }
-
-        private void InitializeLineNumberResources()
-        {
-            if (lineNumberFormat == null)
-            {
-                lineNumberFormat = new StringFormat { 
-                    Alignment = StringAlignment.Far,
-                    LineAlignment = StringAlignment.Center
-                };
-                lineNumberFont = new Font("Consolas", 8.25F);
-                lineNumberBrush = new SolidBrush(LineNumberColor);
-                gutterBrush = new SolidBrush(GutterBackColor);
-                separatorPen = new Pen(SeparatorColor);
-            }
-        }
-
-        private void UpdateTextPadding()
-        {
-            this.SelectionIndent = showLineNumbers ? LineNumberWidth + 5 : 5;
-            if (showLineNumbers && lineNumberFormat == null)
-            {
-                InitializeLineNumberResources();
-            }
-            this.Invalidate();
-        }
-
-        protected override void WndProc(ref Message m)
-        {
-            base.WndProc(ref m);
-
-            if (showLineNumbers && m.Msg == WM_PAINT)
-            {
-                DrawLineNumbers();
-            }
-        }
-
-        private void DrawLineNumbers()
-        {
-            if (!showLineNumbers || lineNumberFormat == null) return;
-
-            using (Graphics g = CreateGraphics())
-            {
-                // Fill gutter background
-                g.FillRectangle(gutterBrush, 0, 0, LineNumberWidth, ClientSize.Height);
-
-                // Only calculate visible lines if we're actually showing line numbers
-                Point pt = new Point(0, 0);
-                int firstLine = GetLineFromCharIndex(GetCharIndexFromPosition(pt));
-                int lastLine = GetLineFromCharIndex(GetCharIndexFromPosition(new Point(0, ClientSize.Height)));
-
-                // Draw the line numbers
-                for (int i = firstLine; i <= lastLine + 1 && i < Lines.Length; i++)
-                {
-                    pt.Y = GetPositionFromCharIndex(GetFirstCharIndexFromLine(i)).Y;
-                    if (pt.Y >= 0 && pt.Y <= ClientSize.Height)
-                    {
-                        string lineNumber = (i + 1).ToString();
-                        g.DrawString(
-                            lineNumber,
-                            lineNumberFont,
-                            lineNumberBrush,
-                            new RectangleF(0, pt.Y, LineNumberWidth - LineNumberPadding, Font.Height),
-                            lineNumberFormat);
-                    }
-                }
-
-                // Draw separator line
-                g.DrawLine(separatorPen, LineNumberWidth - 1, 0, LineNumberWidth - 1, ClientSize.Height);
-            }
-        }
-
-        protected override void OnTextChanged(EventArgs e)
-        {
-            base.OnTextChanged(e);
-            isLargeFile = Lines.Length > 10000;
-            if (showLineNumbers)
-            {
-                Invalidate();
-            }
-        }
-
-        protected override void OnVScroll(EventArgs e)
-        {
-            base.OnVScroll(e);
-            if (showLineNumbers)
-            {
-                Invalidate();
-            }
-        }
-
-        protected override void OnSizeChanged(EventArgs e)
-        {
-            base.OnSizeChanged(e);
-            if (showLineNumbers)
-            {
-                Invalidate();
-            }
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                lineNumberFormat?.Dispose();
-                lineNumberFont?.Dispose();
-                lineNumberBrush?.Dispose();
-                gutterBrush?.Dispose();
-                separatorPen?.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-
-        public void SetShowLineNumbers(bool show)
-        {
-            ShowLineNumbers = show;
-        }
     }
 }
