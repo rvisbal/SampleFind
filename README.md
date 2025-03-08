@@ -92,12 +92,12 @@ Place a file named "default.json" in the application directory to automatically 
 ### Cursor Integration
 When developing SampleFind with Cursor:
 - Ensure proper Git configuration to avoid permission issues when pushing changes
-- Use the solution file (WinFormsApp1.sln) to open the project in Cursor
+- Use the solution file (VisbalLogFilter.sln) to open the project in Cursor
 - The main application code is in Form1.cs
 - Custom controls are defined within the same file (RoundedButton, LineNumberRichTextBox)
 
 ### Project Structure
-- **WinFormsApp1/**: Main project directory
+- **VisbalLogFilter/**: Main project directory
   - **Form1.cs**: Contains the main application logic and UI components
   - **Program.cs**: Application entry point
   - **FilterCondition.cs**: Data model for filter conditions
