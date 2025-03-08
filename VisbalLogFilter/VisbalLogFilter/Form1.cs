@@ -218,61 +218,79 @@ namespace VisbalLogFilter
                 new Point(400, 10), 
                 Color.FromArgb(244, 67, 54)
             );
+            
+            // Add save icon to the save button
+            try
+            {
+                // Create a persistent bitmap that won't be disposed
+                Bitmap saveIconBitmap = new Bitmap(16, 16);
+                using (Graphics g = Graphics.FromImage(saveIconBitmap))
+                {
+                    // Draw a floppy disk icon
+                    g.Clear(Color.Transparent);
+                    
+                    // Draw the floppy disk body
+                    g.FillRectangle(Brushes.LightGray, 1, 1, 14, 14);
+                    g.DrawRectangle(Pens.DarkGray, 1, 1, 14, 14);
+                    
+                    // Draw the metal slider
+                    g.FillRectangle(Brushes.DarkGray, 3, 3, 10, 3);
+                    
+                    // Draw the write-protect notch
+                    g.FillRectangle(Brushes.White, 11, 8, 3, 6);
+                }
+                
+                // Set the image after the Graphics object is disposed
+                saveButton.Image = saveIconBitmap;
+                saveButton.ImageAlign = ContentAlignment.MiddleLeft;
+                saveButton.TextAlign = ContentAlignment.MiddleRight;
+                saveButton.TextImageRelation = TextImageRelation.ImageBeforeText;
+                saveButton.Padding = new Padding(5, 0, 0, 0);
+            }
+            catch (Exception ex)
+            {
+                // If there's an error loading the icon, just continue without it
+                Console.WriteLine($"Error loading save icon: {ex.Message}");
+            }
+            
             saveButton.Click += SaveFilters_Click;
 
-            // Add a Reset Colors button
-            var resetColorsButton = UIControlsLibrary.CreateStyledButton("Reset Colors", 120, 30, new Point(filtersTabPage.Width - 140, 10), Color.DarkGray);
+            // Add a Reset Colors button with adjusted position
+            var resetColorsButton = UIControlsLibrary.CreateStyledButton(
+                "Reset Colors", 
+                120, 
+                30, 
+                new Point(530, 10), // Position it to the right of the save button
+                Color.DarkGray
+            );
             resetColorsButton.Click += ResetColors_Click;
-            filtersTabPage.Controls.Add(resetColorsButton);
 
-            topPanel.Controls.AddRange(new Control[] { addFilterButton, applyButton, loadButton, saveButton });
+            // Add buttons to the top panel
+            topPanel.Controls.Add(addFilterButton);
+            topPanel.Controls.Add(applyButton);
+            topPanel.Controls.Add(loadButton);
+            topPanel.Controls.Add(saveButton);
+            topPanel.Controls.Add(resetColorsButton);
 
-            // Create filter container panel
-            Panel filterContainerPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(10),
-                BackColor = Color.FromArgb(250, 250, 250)
-            };
-
-            // Create a scrollable panel for filter conditions
-            Panel filterScrollPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                AutoScroll = true, // Enable scrolling
-                Padding = new Padding(0, 0, 5, 0) // Add padding for scrollbar
-            };
-
-            // Create filter conditions panel inside the scroll panel
-            Panel filterConditionsPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                Padding = new Padding(5),
-                Name = "filterConditionsPanel",
-                Width = filterContainerPanel.Width - 30 // Make slightly narrower to accommodate scrollbar
-            };
-
-            // Add explanation label
-            Label explanationLabel = new Label
-            {
-                Text = "Add filters to show only lines that match the criteria. Each filter is applied with OR logic.",
-                Dock = DockStyle.Top,
-                Height = 40,
-                Font = new Font("Segoe UI", 9),
-                ForeColor = Color.DimGray,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(5)
-            };
-            filterConditionsPanel.Controls.Add(explanationLabel);
-
-            // Add panels to form in the correct hierarchy
-            filterScrollPanel.Controls.Add(filterConditionsPanel);
-            filterContainerPanel.Controls.Add(filterScrollPanel);
-            
-            // Add panels to the Filters tab
-            filtersTabPage.Controls.Add(filterContainerPanel);
+            // Clear and add controls to the filters tab page
+            filtersTabPage.Controls.Clear();
             filtersTabPage.Controls.Add(topPanel);
+
+            // Create a container for filter conditions
+            Panel filterContainer = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true,
+                Padding = new Padding(10),
+                BackColor = Color.White,
+                Name = "filterConditionsPanel"
+            };
+
+            filtersTabPage.Controls.Add(filterContainer);
+
+            // Make sure the controls are in the right z-order
+            topPanel.BringToFront();
+            filterContainer.SendToBack();
         }
 
         private void SetupReplaceTab()

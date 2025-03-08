@@ -30,7 +30,7 @@ namespace VisbalLogFilter.Libraries
                 BackColor = backColor,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                BorderRadius = 10,
+                BorderRadius = 6,
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular),
                 Cursor = Cursors.Hand
             };
