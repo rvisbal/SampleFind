@@ -184,7 +184,7 @@ namespace WinFormsApp1
             }
             else
             {
-                BackColor = FlatAppearance.MouseOverBackColor;
+                BackColor = defaultBackColor;
             }
             Invalidate();
         }
@@ -198,6 +198,7 @@ namespace WinFormsApp1
         private LineNumberRichTextBox mainTextBox;
         private StatusStrip statusStrip;
         private ToolStripStatusLabel statusLabel;
+        private string lastOpenedFilePath = string.Empty;
 
         [DllImport("Shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr ExtractIcon(IntPtr hInst, string lpszExeFileName, int nIconIndex);
@@ -225,10 +226,17 @@ namespace WinFormsApp1
         {
             // Create main menu
             MenuStrip menuStrip = new MenuStrip();
+            
+            // File menu
             ToolStripMenuItem fileMenu = new ToolStripMenuItem("File");
             ToolStripMenuItem openFileMenuItem = new ToolStripMenuItem("Open File", null, OpenFile_Click);
             fileMenu.DropDownItems.Add(openFileMenuItem);
 
+            // Add Save Content menu item
+            ToolStripMenuItem saveContentMenuItem = new ToolStripMenuItem("Save Content", null, SaveContent_Click);
+            fileMenu.DropDownItems.Add(saveContentMenuItem);
+
+            // View menu
             ToolStripMenuItem viewMenu = new ToolStripMenuItem("View");
             ToolStripMenuItem showFiltersMenuItem = new ToolStripMenuItem("Show Filters", null, ShowFilters_Click);
             ToolStripMenuItem showSidebarMenuItem = new ToolStripMenuItem("Show Line Numbers");
@@ -238,8 +246,22 @@ namespace WinFormsApp1
             viewMenu.DropDownItems.Add(showFiltersMenuItem);
             viewMenu.DropDownItems.Add(showSidebarMenuItem);
 
+            // Tools menu
+            ToolStripMenuItem toolsMenu = new ToolStripMenuItem("Tools");
+            
+            // Add Clean Date Part menu item to Tools menu
+            ToolStripMenuItem cleanDatePartMenuItem = new ToolStripMenuItem("Clean Date Part (Remove Before '|')", null, CleanDatePart_Click);
+            toolsMenu.DropDownItems.Add(cleanDatePartMenuItem);
+            
+            // Add Combine Identical Lines menu item to Tools menu
+            ToolStripMenuItem combineIdenticalLinesMenuItem = new ToolStripMenuItem("Combine Identical Lines", null, CombineIdenticalLines_Click);
+            toolsMenu.DropDownItems.Add(combineIdenticalLinesMenuItem);
+
+            // Add all menus to the menu strip
             menuStrip.Items.Add(fileMenu);
             menuStrip.Items.Add(viewMenu);
+            menuStrip.Items.Add(toolsMenu);
+            
             this.MainMenuStrip = menuStrip;
             this.Controls.Add(menuStrip);
 
@@ -269,7 +291,7 @@ namespace WinFormsApp1
 
             // Set form properties
             this.Text = "File Viewer";
-            this.Size = new Size(1000, 700);
+            this.Size = new Size(1400, 980);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.Icon = GetFolderIcon();
 
@@ -345,6 +367,7 @@ namespace WinFormsApp1
                 new Point(270, 12), 
                 Color.FromArgb(108, 117, 125)
             );
+            loadButton.Tag = "LoadFiltersButton";
             loadButton.Click += LoadFilters_Click;
 
             RoundedButton saveButton = CreateStyledButton(
@@ -358,25 +381,33 @@ namespace WinFormsApp1
 
             topPanel.Controls.AddRange(new Control[] { addFilterButton, applyButton, loadButton, saveButton });
 
-            // Add a container panel for the filters with a border
+            // Create filter container panel
             Panel filterContainerPanel = new Panel
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(10),
-                BackColor = Color.White
+                BackColor = Color.FromArgb(250, 250, 250)
             };
-            
-            // Panel for filter conditions
+
+            // Create a scrollable panel for filter conditions
+            Panel filterScrollPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true, // Enable scrolling
+                Padding = new Padding(0, 0, 5, 0) // Add padding for scrollbar
+            };
+
+            // Create filter conditions panel inside the scroll panel
             Panel filterConditionsPanel = new Panel
             {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                Padding = new Padding(5),
                 Name = "filterConditionsPanel",
-                Dock = DockStyle.Fill,
-                AutoScroll = true,
-                Padding = new Padding(10),
-                BackColor = Color.FromArgb(240, 240, 240)
+                Width = filterContainerPanel.Width - 30 // Make slightly narrower to accommodate scrollbar
             };
-            
-            // Add an explanatory label at the top of the conditions panel
+
+            // Add explanation label
             Label explanationLabel = new Label
             {
                 Text = "Add filters to show only lines that match the criteria. Each filter is applied with OR logic.",
@@ -387,11 +418,11 @@ namespace WinFormsApp1
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(5)
             };
-            
             filterConditionsPanel.Controls.Add(explanationLabel);
-            filterContainerPanel.Controls.Add(filterConditionsPanel);
 
-            // Add panels to form
+            // Add panels to form in the correct hierarchy
+            filterScrollPanel.Controls.Add(filterConditionsPanel);
+            filterContainerPanel.Controls.Add(filterScrollPanel);
             filterForm.Controls.Add(filterContainerPanel);
             filterForm.Controls.Add(topPanel);
         }
@@ -407,28 +438,39 @@ namespace WinFormsApp1
 
                 if (!filterForm.Visible)
                 {
-                    // Position the filter form to the right of the main form with proper spacing
-                    // and ensure it doesn't overlap with the main form
-                    int filterFormX = this.Location.X + this.Width + 10; // Add 10px spacing
-                    int filterFormY = this.Location.Y;
+                    // Always position the filter form directly to the right of the main form
+                    int filterFormX = this.Right;
+                    int filterFormY = this.Top;
                     
                     // Make sure the filter form is visible on screen
                     Rectangle screenBounds = Screen.FromControl(this).Bounds;
                     if (filterFormX + filterForm.Width > screenBounds.Right)
                     {
-                        // If it would go off screen, position it to the left of the main form instead
-                        filterFormX = this.Location.X - filterForm.Width - 10;
+                        // If it would go off screen to the right, position it to the left of the main form
+                        filterFormX = this.Left - filterForm.Width;
                         
-                        // If it would still be off screen, just position it at the right edge of the screen
+                        // If it would still be off screen to the left, position it at the same X as the main form
+                        // but offset it vertically to avoid complete overlap
                         if (filterFormX < screenBounds.Left)
                         {
-                            filterFormX = screenBounds.Right - filterForm.Width;
-                            filterFormY = this.Location.Y + 50; // Offset it vertically a bit
+                            filterFormX = this.Left;
+                            filterFormY = this.Top + 50; // Offset vertically
                         }
                     }
                     
+                    // Set the position and ensure it's a child of the main form
+                    filterForm.StartPosition = FormStartPosition.Manual;
                     filterForm.Location = new Point(filterFormX, filterFormY);
-                    filterForm.Show(this);
+                    filterForm.Owner = this; // Make it a child window of the main form
+                    filterForm.Show();
+                    
+                    // Bring the filter form to the front
+                    filterForm.BringToFront();
+                    
+                    // Ensure the filter form stays on top of the main form
+                    filterForm.TopMost = true;
+                    Application.DoEvents();
+                    filterForm.TopMost = false;
                 }
                 else
                 {
@@ -454,6 +496,9 @@ namespace WinFormsApp1
                 {
                     try
                     {
+                        // Store the file path
+                        lastOpenedFilePath = openFileDialog.FileName;
+                        
                         // Read all lines and store them
                         originalLines = File.ReadAllLines(openFileDialog.FileName).ToList();
                         
@@ -537,7 +582,11 @@ namespace WinFormsApp1
                 Width = 20,
                 Height = 20
             };
-            enabledCheckBox.CheckedChanged += (s, ev) => ApplyFilters_Click(null, null); // Reapply filters when checkbox changes
+            enabledCheckBox.CheckedChanged += (s, ev) =>
+            {
+                // Don't automatically apply filters when checkbox changes
+                statusLabel.Text = "Filter enabled/disabled. Click 'Apply Filters' to update.";
+            };
 
             ComboBox filterTypeCombo = new ComboBox
             {
@@ -558,26 +607,54 @@ namespace WinFormsApp1
                 Font = new Font("Segoe UI", 10)
             };
 
-            // Create a rounded color button
-            RoundedButton colorButton = new RoundedButton
+            // Create a simple button for color selection
+            Button colorButton = new Button
             {
                 Width = 40,
                 Height = 30,
-                Location = new Point(380, 10), // Adjusted position
-                BackColor = Color.White,
-                BorderRadius = 10,
-                Text = ""
+                Location = new Point(380, 10),
+                BackColor = Color.FromArgb(0, 123, 255), // Default blue color
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                Text = "",
+                Tag = "FilterColorButton"
             };
 
-            colorButton.Click += (s, ev) =>
+            colorButton.Click += async (s, ev) =>
             {
-                using (ColorDialog colorDialog = new ColorDialog())
+                // Ensure we're working with the correct button
+                if (s is Button clickedButton && clickedButton.Tag as string == "FilterColorButton")
                 {
-                    colorDialog.Color = colorButton.BackColor;
-                    if (colorDialog.ShowDialog() == DialogResult.OK)
+                    using (ColorDialog colorDialog = new ColorDialog())
                     {
-                        colorButton.BackColor = colorDialog.Color;
-                        ApplyFilters_Click(null, null); // Reapply filters to update colors
+                        colorDialog.Color = clickedButton.BackColor;
+                        colorDialog.FullOpen = true;
+                        
+                        if (colorDialog.ShowDialog() == DialogResult.OK)
+                        {
+                            // Set the color only on this specific button
+                            clickedButton.BackColor = colorDialog.Color;
+                            
+                            // Find and update only the matching filter condition
+                            FilterCondition matchingCondition = null;
+                            foreach (var condition in filterConditions)
+                            {
+                                if (ReferenceEquals(condition.ColorButton, clickedButton))
+                                {
+                                    matchingCondition = condition;
+                                    break;
+                                }
+                            }
+                            
+                            if (matchingCondition != null)
+                            {
+                                // Use the setter which will only update this specific button
+                                matchingCondition.HighlightColor = colorDialog.Color;
+                                
+                                // Show confirmation
+                                statusLabel.Text = $"Filter color updated: R={colorDialog.Color.R}, G={colorDialog.Color.G}, B={colorDialog.Color.B}. Click Apply Filters.";
+                            }
+                        }
                     }
                 }
             };
@@ -599,7 +676,8 @@ namespace WinFormsApp1
             {
                 filterConditionsPanel.Controls.Remove(filterContainer);
                 filterConditions.RemoveAll(f => f.Container == filterContainer);
-                ApplyFilters_Click(null, null); // Reapply filters after removing one
+                // Don't automatically apply filters when removing one
+                statusLabel.Text = "Filter removed. Click 'Apply Filters' to update.";
             };
 
             filterContainer.Controls.AddRange(new Control[] { enabledCheckBox, filterTypeCombo, filterTextBox, colorButton, removeButton });
@@ -870,11 +948,9 @@ namespace WinFormsApp1
                         {
                             AddFilterFromData(filter);
                         }
-
-                        // Apply loaded filters
-                        ApplyFilters_Click(null, null);
                         
-                        // No confirmation message
+                        // Show message to remind user to apply filters
+                        statusLabel.Text = $"Filters loaded from {openFileDialog.FileName}. Click 'Apply Filters' to use them.";
                     }
                     catch (Exception ex)
                     {
@@ -908,7 +984,11 @@ namespace WinFormsApp1
                 Width = 20,
                 Height = 20
             };
-            enabledCheckBox.CheckedChanged += (s, ev) => ApplyFilters_Click(null, null); // Reapply filters when checkbox changes
+            enabledCheckBox.CheckedChanged += (s, ev) =>
+            {
+                // Don't automatically apply filters when checkbox changes
+                statusLabel.Text = "Filter enabled/disabled. Click 'Apply Filters' to update.";
+            };
 
             ComboBox filterTypeCombo = new ComboBox
             {
@@ -930,26 +1010,54 @@ namespace WinFormsApp1
                 Font = new Font("Segoe UI", 10)
             };
 
-            // Create a rounded color button
-            RoundedButton colorButton = new RoundedButton
+            // Create a simple button for color selection
+            Button colorButton = new Button
             {
                 Width = 40,
                 Height = 30,
-                Location = new Point(380, 10), // Adjusted position
+                Location = new Point(380, 10),
                 BackColor = ColorTranslator.FromHtml(filterData.HighlightColor),
-                BorderRadius = 10,
-                Text = ""
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                Text = "",
+                Tag = "FilterColorButton"
             };
 
-            colorButton.Click += (s, ev) =>
+            colorButton.Click += async (s, ev) =>
             {
-                using (ColorDialog colorDialog = new ColorDialog())
+                // Ensure we're working with the correct button
+                if (s is Button clickedButton && clickedButton.Tag as string == "FilterColorButton")
                 {
-                    colorDialog.Color = colorButton.BackColor;
-                    if (colorDialog.ShowDialog() == DialogResult.OK)
+                    using (ColorDialog colorDialog = new ColorDialog())
                     {
-                        colorButton.BackColor = colorDialog.Color;
-                        ApplyFilters_Click(null, null);
+                        colorDialog.Color = clickedButton.BackColor;
+                        colorDialog.FullOpen = true;
+                        
+                        if (colorDialog.ShowDialog() == DialogResult.OK)
+                        {
+                            // Set the color only on this specific button
+                            clickedButton.BackColor = colorDialog.Color;
+                            
+                            // Find and update only the matching filter condition
+                            FilterCondition matchingCondition = null;
+                            foreach (var condition in filterConditions)
+                            {
+                                if (ReferenceEquals(condition.ColorButton, clickedButton))
+                                {
+                                    matchingCondition = condition;
+                                    break;
+                                }
+                            }
+                            
+                            if (matchingCondition != null)
+                            {
+                                // Use the setter which will only update this specific button
+                                matchingCondition.HighlightColor = colorDialog.Color;
+                                
+                                // Show confirmation
+                                statusLabel.Text = $"Filter color updated: R={colorDialog.Color.R}, G={colorDialog.Color.G}, B={colorDialog.Color.B}. Click Apply Filters.";
+                            }
+                        }
                     }
                 }
             };
@@ -971,7 +1079,8 @@ namespace WinFormsApp1
             {
                 filterConditionsPanel.Controls.Remove(filterContainer);
                 filterConditions.RemoveAll(f => f.Container == filterContainer);
-                ApplyFilters_Click(null, null);
+                // Don't automatically apply filters when removing one
+                statusLabel.Text = "Filter removed. Click 'Apply Filters' to update.";
             };
 
             filterContainer.Controls.AddRange(new Control[] { enabledCheckBox, filterTypeCombo, filterTextBox, colorButton, removeButton });
@@ -1050,6 +1159,264 @@ namespace WinFormsApp1
                 }
             }
         }
+
+        private void SaveContent_Click(object sender, EventArgs e)
+        {
+            // Check if there's content to save
+            if (string.IsNullOrEmpty(mainTextBox.Text))
+            {
+                MessageBox.Show("There is no content to save.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "Text files (*.txt)|*.txt|Log files (*.log)|*.log|All files (*.*)|*.*";
+                saveFileDialog.FilterIndex = 1;
+                saveFileDialog.DefaultExt = "txt";
+                saveFileDialog.Title = "Save Current Content";
+
+                // If a file was previously opened, suggest its name for saving
+                if (originalLines.Count > 0)
+                {
+                    try
+                    {
+                        string fileName = Path.GetFileNameWithoutExtension(lastOpenedFilePath);
+                        if (!string.IsNullOrEmpty(fileName))
+                        {
+                            saveFileDialog.FileName = $"{fileName}_filtered.txt";
+                        }
+                    }
+                    catch
+                    {
+                        // If there's any error getting the filename, just use a default
+                        saveFileDialog.FileName = "filtered_content.txt";
+                    }
+                }
+                else
+                {
+                    saveFileDialog.FileName = "content.txt";
+                }
+
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        // Save the current content of the text box
+                        File.WriteAllText(saveFileDialog.FileName, mainTextBox.Text);
+                        
+                        // Show success message
+                        statusLabel.Text = $"Content saved to {saveFileDialog.FileName}";
+                        
+                        // Optional: Show a message box for confirmation
+                        MessageBox.Show($"Content successfully saved to {saveFileDialog.FileName}", "Success", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error saving content: {ex.Message}", "Error", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private void CleanDatePart_Click(object sender, EventArgs e)
+        {
+            // Check if there's content to process
+            if (originalLines.Count == 0)
+            {
+                MessageBox.Show("Please open a file first.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            try
+            {
+                // Show processing indicator
+                statusLabel.Text = "Processing...";
+                Application.DoEvents();
+
+                // Create a new list to store the cleaned lines
+                List<string> cleanedLines = new List<string>(originalLines.Count);
+                
+                // Process each line
+                foreach (string line in originalLines)
+                {
+                    string cleanedLine = line;
+                    int pipeIndex = line.IndexOf('|');
+                    
+                    // If the line contains a pipe character, remove everything before it
+                    if (pipeIndex >= 0)
+                    {
+                        cleanedLine = line.Substring(pipeIndex + 1);
+                    }
+                    
+                    cleanedLines.Add(cleanedLine);
+                }
+                
+                // Replace the original lines with the cleaned lines
+                originalLines = cleanedLines;
+                
+                // Update the display
+                mainTextBox.SuspendLayout();
+                mainTextBox.Clear();
+                
+                // For large files, use a StringBuilder and append in chunks
+                if (originalLines.Count > 10000)
+                {
+                    const int chunkSize = 5000;
+                    for (int i = 0; i < originalLines.Count; i += chunkSize)
+                    {
+                        int count = Math.Min(chunkSize, originalLines.Count - i);
+                        string chunk = string.Join(Environment.NewLine, originalLines.GetRange(i, count));
+                        mainTextBox.AppendText(chunk);
+                        if (i + count < originalLines.Count)
+                        {
+                            mainTextBox.AppendText(Environment.NewLine);
+                        }
+                        // Allow UI to update periodically for responsiveness
+                        if (i % 20000 == 0)
+                        {
+                            Application.DoEvents();
+                        }
+                    }
+                }
+                else
+                {
+                    mainTextBox.Text = string.Join(Environment.NewLine, originalLines);
+                }
+                
+                mainTextBox.Select(0, 0);
+                mainTextBox.ResumeLayout();
+                
+                // Inform user they need to reapply filters if needed
+                if (filterConditions.Count > 0 && filterConditions.Any(c => c.Enabled && !string.IsNullOrEmpty(c.TextBox.Text)))
+                {
+                    statusLabel.Text = $"Date part removed from {originalLines.Count:N0} lines. Click 'Apply Filters' to update the view.";
+                }
+                else
+                {
+                    statusLabel.Text = $"Date part removed from {originalLines.Count:N0} lines.";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error processing content: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                statusLabel.Text = "Error processing content";
+            }
+        }
+
+        private void CombineIdenticalLines_Click(object sender, EventArgs e)
+        {
+            // Check if there's content to process
+            if (originalLines.Count == 0)
+            {
+                MessageBox.Show("Please open a file first.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            try
+            {
+                // Show processing indicator
+                statusLabel.Text = "Combining identical lines...";
+                Application.DoEvents();
+
+                // Create a new list to store the combined lines
+                List<string> combinedLines = new List<string>();
+                
+                if (originalLines.Count > 0)
+                {
+                    string currentLine = originalLines[0];
+                    int count = 1;
+                    
+                    // Process from the second line onwards
+                    for (int i = 1; i < originalLines.Count; i++)
+                    {
+                        if (originalLines[i] == currentLine)
+                        {
+                            // Same line, increment counter
+                            count++;
+                        }
+                        else
+                        {
+                            // Different line, add the previous line with count if needed
+                            if (count > 1)
+                            {
+                                combinedLines.Add($"{currentLine} - {count}");
+                            }
+                            else
+                            {
+                                combinedLines.Add(currentLine);
+                            }
+                            
+                            // Reset for the new line
+                            currentLine = originalLines[i];
+                            count = 1;
+                        }
+                    }
+                    
+                    // Add the last line
+                    if (count > 1)
+                    {
+                        combinedLines.Add($"{currentLine} - {count}");
+                    }
+                    else
+                    {
+                        combinedLines.Add(currentLine);
+                    }
+                }
+                
+                // Replace the original lines with the combined lines
+                originalLines = combinedLines;
+                
+                // Update the display
+                mainTextBox.SuspendLayout();
+                mainTextBox.Clear();
+                
+                // For large files, use a StringBuilder and append in chunks
+                if (originalLines.Count > 10000)
+                {
+                    const int chunkSize = 5000;
+                    for (int i = 0; i < originalLines.Count; i += chunkSize)
+                    {
+                        int count = Math.Min(chunkSize, originalLines.Count - i);
+                        string chunk = string.Join(Environment.NewLine, originalLines.GetRange(i, count));
+                        mainTextBox.AppendText(chunk);
+                        if (i + count < originalLines.Count)
+                        {
+                            mainTextBox.AppendText(Environment.NewLine);
+                        }
+                        // Allow UI to update periodically for responsiveness
+                        if (i % 20000 == 0)
+                        {
+                            Application.DoEvents();
+                        }
+                    }
+                }
+                else
+                {
+                    mainTextBox.Text = string.Join(Environment.NewLine, originalLines);
+                }
+                
+                mainTextBox.Select(0, 0);
+                mainTextBox.ResumeLayout();
+                
+                // Inform user they need to reapply filters if needed
+                if (filterConditions.Count > 0 && filterConditions.Any(c => c.Enabled && !string.IsNullOrEmpty(c.TextBox.Text)))
+                {
+                    statusLabel.Text = $"Combined identical lines: {combinedLines.Count:N0} lines (reduced by {Math.Abs(combinedLines.Count - originalLines.Count):N0} lines). Click 'Apply Filters' to update the view.";
+                }
+                else
+                {
+                    statusLabel.Text = $"Combined identical lines: {combinedLines.Count:N0} lines (reduced by {Math.Abs(combinedLines.Count - originalLines.Count):N0} lines).";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error processing content: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                statusLabel.Text = "Error combining lines";
+            }
+        }
     }
 
     public class FilterCondition
@@ -1058,7 +1425,19 @@ namespace WinFormsApp1
         public ComboBox TypeComboBox { get; set; }
         public TextBox TextBox { get; set; }
         public Button ColorButton { get; set; }
-        public Color HighlightColor { get; set; } = Color.White;
+        private Color highlightColor = Color.White;
+        public Color HighlightColor 
+        { 
+            get { return highlightColor; }
+            set 
+            { 
+                highlightColor = value;
+                if (ColorButton != null)
+                {
+                    ColorButton.BackColor = value;
+                }
+            }
+        }
         public CheckBox EnabledCheckBox { get; set; }
         public bool Enabled { get => EnabledCheckBox?.Checked ?? true; }
     }
