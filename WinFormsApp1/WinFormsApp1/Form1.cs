@@ -367,6 +367,7 @@ namespace WinFormsApp1
                 new Point(270, 12), 
                 Color.FromArgb(108, 117, 125)
             );
+            loadButton.Tag = "LoadFiltersButton";
             loadButton.Click += LoadFilters_Click;
 
             RoundedButton saveButton = CreateStyledButton(
@@ -615,32 +616,46 @@ namespace WinFormsApp1
                 BackColor = Color.FromArgb(0, 123, 255), // Default blue color
                 FlatStyle = FlatStyle.Flat,
                 FlatAppearance = { BorderSize = 0 },
-                Text = ""
+                Text = "",
+                Tag = "FilterColorButton"
             };
 
             colorButton.Click += async (s, ev) =>
             {
-                ColorDialog colorDialog = new ColorDialog();
-                colorDialog.Color = colorButton.BackColor;
-                colorDialog.FullOpen = true;
-                
-                if (colorDialog.ShowDialog() == DialogResult.OK)
+                // Ensure we're working with the correct button
+                if (s is Button clickedButton && clickedButton.Tag as string == "FilterColorButton")
                 {
-                    // Set the button color directly
-                    colorButton.BackColor = colorDialog.Color;
-                    
-                    // Update the filter condition directly
-                    foreach (var condition in filterConditions)
+                    using (ColorDialog colorDialog = new ColorDialog())
                     {
-                        if (condition.ColorButton == colorButton)
+                        colorDialog.Color = clickedButton.BackColor;
+                        colorDialog.FullOpen = true;
+                        
+                        if (colorDialog.ShowDialog() == DialogResult.OK)
                         {
-                            condition.HighlightColor = colorDialog.Color;
-                            break;
+                            // Set the color only on this specific button
+                            clickedButton.BackColor = colorDialog.Color;
+                            
+                            // Find and update only the matching filter condition
+                            FilterCondition matchingCondition = null;
+                            foreach (var condition in filterConditions)
+                            {
+                                if (ReferenceEquals(condition.ColorButton, clickedButton))
+                                {
+                                    matchingCondition = condition;
+                                    break;
+                                }
+                            }
+                            
+                            if (matchingCondition != null)
+                            {
+                                // Use the setter which will only update this specific button
+                                matchingCondition.HighlightColor = colorDialog.Color;
+                                
+                                // Show confirmation
+                                statusLabel.Text = $"Filter color updated: R={colorDialog.Color.R}, G={colorDialog.Color.G}, B={colorDialog.Color.B}. Click Apply Filters.";
+                            }
                         }
                     }
-                    
-                    // Show confirmation
-                    statusLabel.Text = $"Color updated: R={colorDialog.Color.R}, G={colorDialog.Color.G}, B={colorDialog.Color.B}. Click Apply Filters.";
                 }
             };
 
@@ -1004,32 +1019,46 @@ namespace WinFormsApp1
                 BackColor = ColorTranslator.FromHtml(filterData.HighlightColor),
                 FlatStyle = FlatStyle.Flat,
                 FlatAppearance = { BorderSize = 0 },
-                Text = ""
+                Text = "",
+                Tag = "FilterColorButton"
             };
 
             colorButton.Click += async (s, ev) =>
             {
-                ColorDialog colorDialog = new ColorDialog();
-                colorDialog.Color = colorButton.BackColor;
-                colorDialog.FullOpen = true;
-                
-                if (colorDialog.ShowDialog() == DialogResult.OK)
+                // Ensure we're working with the correct button
+                if (s is Button clickedButton && clickedButton.Tag as string == "FilterColorButton")
                 {
-                    // Set the button color directly
-                    colorButton.BackColor = colorDialog.Color;
-                    
-                    // Update the filter condition directly
-                    foreach (var condition in filterConditions)
+                    using (ColorDialog colorDialog = new ColorDialog())
                     {
-                        if (condition.ColorButton == colorButton)
+                        colorDialog.Color = clickedButton.BackColor;
+                        colorDialog.FullOpen = true;
+                        
+                        if (colorDialog.ShowDialog() == DialogResult.OK)
                         {
-                            condition.HighlightColor = colorDialog.Color;
-                            break;
+                            // Set the color only on this specific button
+                            clickedButton.BackColor = colorDialog.Color;
+                            
+                            // Find and update only the matching filter condition
+                            FilterCondition matchingCondition = null;
+                            foreach (var condition in filterConditions)
+                            {
+                                if (ReferenceEquals(condition.ColorButton, clickedButton))
+                                {
+                                    matchingCondition = condition;
+                                    break;
+                                }
+                            }
+                            
+                            if (matchingCondition != null)
+                            {
+                                // Use the setter which will only update this specific button
+                                matchingCondition.HighlightColor = colorDialog.Color;
+                                
+                                // Show confirmation
+                                statusLabel.Text = $"Filter color updated: R={colorDialog.Color.R}, G={colorDialog.Color.G}, B={colorDialog.Color.B}. Click Apply Filters.";
+                            }
                         }
                     }
-                    
-                    // Show confirmation
-                    statusLabel.Text = $"Color updated: R={colorDialog.Color.R}, G={colorDialog.Color.G}, B={colorDialog.Color.B}. Click Apply Filters.";
                 }
             };
 
