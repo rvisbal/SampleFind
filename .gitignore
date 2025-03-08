@@ -3,4 +3,6 @@
 VisbalLogFilter/VisbalLogFilter/bin/
 VisbalLogFilter/VisbalLogFilter/obj/
 Project1/Project1/obj/
-
+VisbalLogFilter/VisbalLogFilter.Tests/obj
+VisbalLogFilter/VisbalLogFilter.Tests/bin
+temp/
