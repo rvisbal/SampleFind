@@ -291,7 +291,7 @@ namespace WinFormsApp1
 
             // Set form properties
             this.Text = "File Viewer";
-            this.Size = new Size(1000, 700);
+            this.Size = new Size(1400, 980);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.Icon = GetFolderIcon();
 
