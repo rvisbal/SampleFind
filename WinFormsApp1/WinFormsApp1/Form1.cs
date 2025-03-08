@@ -199,6 +199,12 @@ namespace WinFormsApp1
         private StatusStrip statusStrip;
         private ToolStripStatusLabel statusLabel;
         private string lastOpenedFilePath = string.Empty;
+        
+        // Add new fields for replacement functionality
+        private List<ReplaceCondition> replaceConditions = new List<ReplaceCondition>();
+        private TabControl tabControl;
+        private TabPage filtersTabPage;
+        private TabPage replaceTabPage;
 
         [DllImport("Shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr ExtractIcon(IntPtr hInst, string lpszExeFileName, int nIconIndex);
@@ -323,15 +329,47 @@ namespace WinFormsApp1
         {
             filterForm = new Form
             {
-                Text = "Filter Options",
-                Width = 560,
-                Height = 600,
+                Text = "Filter & Replace Options",
+                Width = 700,  // Make it wider
+                Height = 700, // Make it taller
                 StartPosition = FormStartPosition.CenterParent,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
+                FormBorderStyle = FormBorderStyle.SizableToolWindow, // Allow resizing
                 MaximizeBox = false,
                 MinimizeBox = false
             };
 
+            // Create tab control
+            tabControl = new TabControl
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Point(10, 10)
+            };
+
+            // Create Filter tab
+            filtersTabPage = new TabPage("Filters");
+            filtersTabPage.Padding = new Padding(10);
+
+            // Create Replace tab
+            replaceTabPage = new TabPage("Replace");
+            replaceTabPage.Padding = new Padding(10);
+
+            // Add tabs to tab control
+            tabControl.TabPages.Add(filtersTabPage);
+            tabControl.TabPages.Add(replaceTabPage);
+
+            // Add tab control to form
+            filterForm.Controls.Add(tabControl);
+
+            // Set up the Filters tab
+            SetupFiltersTab();
+
+            // Set up the Replace tab
+            SetupReplaceTab();
+        }
+
+        // Add a new method to set up the Filters tab
+        private void SetupFiltersTab()
+        {
             // Top panel for buttons
             Panel topPanel = new Panel
             {
@@ -423,8 +461,110 @@ namespace WinFormsApp1
             // Add panels to form in the correct hierarchy
             filterScrollPanel.Controls.Add(filterConditionsPanel);
             filterContainerPanel.Controls.Add(filterScrollPanel);
-            filterForm.Controls.Add(filterContainerPanel);
-            filterForm.Controls.Add(topPanel);
+            
+            // Add panels to the Filters tab
+            filtersTabPage.Controls.Add(filterContainerPanel);
+            filtersTabPage.Controls.Add(topPanel);
+        }
+
+        // Add a new method to set up the Replace tab
+        private void SetupReplaceTab()
+        {
+            // Top panel for buttons
+            Panel topPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 60,
+                Padding = new Padding(10),
+                BackColor = Color.FromArgb(245, 245, 245)
+            };
+
+            // Create styled buttons for the Replace tab
+            RoundedButton addReplaceButton = CreateStyledButton(
+                "Add Replace", 
+                120, 
+                35, 
+                new Point(10, 12), 
+                Color.FromArgb(40, 167, 69)
+            );
+            addReplaceButton.Click += AddReplace_Click;
+
+            RoundedButton applyReplaceButton = CreateStyledButton(
+                "Apply Replace", 
+                120, 
+                35, 
+                new Point(140, 12), 
+                Color.FromArgb(0, 123, 255)
+            );
+            applyReplaceButton.Click += ApplyReplace_Click;
+
+            RoundedButton loadReplaceButton = CreateStyledButton(
+                "Load Replace", 
+                120, 
+                35, 
+                new Point(270, 12), 
+                Color.FromArgb(108, 117, 125)
+            );
+            loadReplaceButton.Tag = "LoadReplaceButton";
+            loadReplaceButton.Click += LoadReplace_Click;
+
+            RoundedButton saveReplaceButton = CreateStyledButton(
+                "Save Replace", 
+                120, 
+                35, 
+                new Point(400, 12), 
+                Color.FromArgb(255, 193, 7)
+            );
+            saveReplaceButton.Click += SaveReplace_Click;
+
+            topPanel.Controls.AddRange(new Control[] { addReplaceButton, applyReplaceButton, loadReplaceButton, saveReplaceButton });
+
+            // Create replace container panel
+            Panel replaceContainerPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(10),
+                BackColor = Color.FromArgb(250, 250, 250)
+            };
+
+            // Create a scrollable panel for replace conditions
+            Panel replaceScrollPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true, // Enable scrolling
+                Padding = new Padding(0, 0, 5, 0) // Add padding for scrollbar
+            };
+
+            // Create replace conditions panel inside the scroll panel
+            Panel replaceConditionsPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                Padding = new Padding(5),
+                Name = "replaceConditionsPanel",
+                Width = replaceContainerPanel.Width - 30 // Make slightly narrower to accommodate scrollbar
+            };
+
+            // Add explanation label
+            Label explanationLabel = new Label
+            {
+                Text = "Add text to find and replace. Each replacement is applied in order from top to bottom.",
+                Dock = DockStyle.Top,
+                Height = 40,
+                Font = new Font("Segoe UI", 9),
+                ForeColor = Color.DimGray,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(5)
+            };
+            replaceConditionsPanel.Controls.Add(explanationLabel);
+
+            // Add panels to form in the correct hierarchy
+            replaceScrollPanel.Controls.Add(replaceConditionsPanel);
+            replaceContainerPanel.Controls.Add(replaceScrollPanel);
+            
+            // Add panels to the Replace tab
+            replaceTabPage.Controls.Add(replaceContainerPanel);
+            replaceTabPage.Controls.Add(topPanel);
         }
 
         private void ShowFilters_Click(object sender, EventArgs e)
@@ -1417,6 +1557,357 @@ namespace WinFormsApp1
                 statusLabel.Text = "Error combining lines";
             }
         }
+
+        // Add methods for the Replace functionality
+        private void AddReplace_Click(object sender, EventArgs e)
+        {
+            Panel replaceConditionsPanel = (Panel)filterForm.Controls.Find("replaceConditionsPanel", true)[0];
+            
+            // Create replace container with simplified styling
+            Panel replaceContainer = new Panel
+            {
+                Height = 50,
+                Dock = DockStyle.Top,
+                Margin = new Padding(0, 0, 0, 5),
+                Padding = new Padding(5),
+                BackColor = Color.White,
+                BorderStyle = BorderStyle.None
+            };
+
+            // Add enabled checkbox
+            CheckBox enabledCheckBox = new CheckBox
+            {
+                Text = "",
+                Checked = true,
+                Location = new Point(10, 15),
+                Width = 20,
+                Height = 20
+            };
+
+            // Create Find TextBox
+            TextBox findTextBox = new TextBox
+            {
+                Width = 220,
+                Height = 30,
+                Location = new Point(40, 10),
+                Font = new Font("Segoe UI", 10),
+                PlaceholderText = "Text to find..."
+            };
+
+            // Create Replace TextBox
+            TextBox replaceTextBox = new TextBox
+            {
+                Width = 220,
+                Height = 30,
+                Location = new Point(270, 10),
+                Font = new Font("Segoe UI", 10),
+                PlaceholderText = "Replace with..."
+            };
+
+            // Create a rounded remove button
+            RoundedButton removeButton = new RoundedButton
+            {
+                Text = "X",
+                Width = 40,
+                Height = 30,
+                Location = new Point(500, 10),
+                BackColor = Color.FromArgb(220, 53, 69),
+                ForeColor = Color.White,
+                BorderRadius = 10,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold)
+            };
+
+            removeButton.Click += (s, ev) =>
+            {
+                replaceConditionsPanel.Controls.Remove(replaceContainer);
+                replaceConditions.RemoveAll(r => r.Container == replaceContainer);
+                statusLabel.Text = "Replace rule removed. Click 'Apply Replace' to update.";
+            };
+
+            replaceContainer.Controls.AddRange(new Control[] { enabledCheckBox, findTextBox, replaceTextBox, removeButton });
+            
+            // Add new replace condition
+            ReplaceCondition condition = new ReplaceCondition
+            {
+                Container = replaceContainer,
+                FindTextBox = findTextBox,
+                ReplaceTextBox = replaceTextBox,
+                EnabledCheckBox = enabledCheckBox
+            };
+            replaceConditions.Add(condition);
+
+            // Add to panel below the buttons
+            replaceConditionsPanel.Controls.Add(replaceContainer);
+            replaceContainer.BringToFront();
+        }
+
+        private void ApplyReplace_Click(object sender, EventArgs e)
+        {
+            if (originalLines.Count == 0)
+            {
+                MessageBox.Show("Please open a file first.", "No File", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Show processing indicator in status bar
+            statusLabel.Text = "Processing replacements...";
+            Application.DoEvents(); // Allow UI to update
+
+            // Get enabled replace conditions
+            var enabledReplaceConditions = replaceConditions.Where(c => c.Enabled).ToList();
+
+            if (enabledReplaceConditions.Count == 0)
+            {
+                statusLabel.Text = "No replacements to apply.";
+                return;
+            }
+
+            try
+            {
+                // Create a copy of the original lines to work with
+                List<string> modifiedLines = new List<string>(originalLines);
+                int replacementsCount = 0;
+
+                // Apply each replacement
+                foreach (var condition in enabledReplaceConditions)
+                {
+                    string findText = condition.FindTextBox.Text;
+                    string replaceText = condition.ReplaceTextBox.Text;
+
+                    if (!string.IsNullOrEmpty(findText))
+                    {
+                        for (int i = 0; i < modifiedLines.Count; i++)
+                        {
+                            string originalLine = modifiedLines[i];
+                            string newLine = originalLine.Replace(findText, replaceText);
+                            
+                            if (originalLine != newLine)
+                            {
+                                modifiedLines[i] = newLine;
+                                replacementsCount++;
+                            }
+                        }
+                    }
+                }
+
+                // Update the display with the modified text
+                mainTextBox.SuspendLayout();
+                mainTextBox.Clear();
+                
+                // For large files, use a StringBuilder and append in chunks
+                if (modifiedLines.Count > 10000)
+                {
+                    const int chunkSize = 5000;
+                    for (int i = 0; i < modifiedLines.Count; i += chunkSize)
+                    {
+                        int count = Math.Min(chunkSize, modifiedLines.Count - i);
+                        string chunk = string.Join(Environment.NewLine, modifiedLines.GetRange(i, count));
+                        mainTextBox.AppendText(chunk);
+                        if (i + count < modifiedLines.Count)
+                        {
+                            mainTextBox.AppendText(Environment.NewLine);
+                        }
+                        // Allow UI to update periodically for responsiveness
+                        if (i % 20000 == 0)
+                        {
+                            Application.DoEvents();
+                        }
+                    }
+                }
+                else
+                {
+                    mainTextBox.Text = string.Join(Environment.NewLine, modifiedLines);
+                }
+                
+                mainTextBox.Select(0, 0);
+                mainTextBox.ResumeLayout();
+                
+                // Update status bar
+                statusLabel.Text = $"Replacements applied: {replacementsCount} occurrences replaced.";
+                
+                // Update the original lines with the modified ones
+                originalLines = modifiedLines;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error applying replacements: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                statusLabel.Text = "Error applying replacements.";
+            }
+        }
+
+        private void SaveReplace_Click(object sender, EventArgs e)
+        {
+            if (replaceConditions.Count == 0)
+            {
+                MessageBox.Show("No replacements to save.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*";
+                saveFileDialog.FilterIndex = 1;
+                saveFileDialog.DefaultExt = "json";
+
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        var replaceData = replaceConditions.Select(c => new ReplaceData
+                        {
+                            FindText = c.FindTextBox.Text,
+                            ReplaceText = c.ReplaceTextBox.Text,
+                            Enabled = c.EnabledCheckBox.Checked
+                        }).ToList();
+
+                        string jsonString = JsonSerializer.Serialize(replaceData, new JsonSerializerOptions
+                        {
+                            WriteIndented = true
+                        });
+
+                        File.WriteAllText(saveFileDialog.FileName, jsonString);
+                        MessageBox.Show($"Replacements saved to {saveFileDialog.FileName}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error saving replacements: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private void LoadReplace_Click(object sender, EventArgs e)
+        {
+            using (OpenFileDialog openFileDialog = new OpenFileDialog())
+            {
+                openFileDialog.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*";
+                openFileDialog.FilterIndex = 1;
+
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        string jsonString = File.ReadAllText(openFileDialog.FileName);
+                        var replaceData = JsonSerializer.Deserialize<List<ReplaceData>>(jsonString);
+
+                        // Clear existing replacements
+                        Panel replaceConditionsPanel = (Panel)filterForm.Controls.Find("replaceConditionsPanel", true)[0];
+                        replaceConditionsPanel.Controls.Clear();
+                        replaceConditions.Clear();
+
+                        // Add label back
+                        Label explanationLabel = new Label
+                        {
+                            Text = "Add text to find and replace. Each replacement is applied in order from top to bottom.",
+                            Dock = DockStyle.Top,
+                            Height = 40,
+                            Font = new Font("Segoe UI", 9),
+                            ForeColor = Color.DimGray,
+                            TextAlign = ContentAlignment.MiddleLeft,
+                            Padding = new Padding(5)
+                        };
+                        replaceConditionsPanel.Controls.Add(explanationLabel);
+
+                        // Add loaded replacements
+                        foreach (var data in replaceData)
+                        {
+                            AddReplaceFromData(data);
+                        }
+                        
+                        // Show message to remind user to apply replacements
+                        statusLabel.Text = $"Replacements loaded from {openFileDialog.FileName}. Click 'Apply Replace' to use them.";
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error loading replacements: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private void AddReplaceFromData(ReplaceData replaceData)
+        {
+            Panel replaceConditionsPanel = (Panel)filterForm.Controls.Find("replaceConditionsPanel", true)[0];
+            
+            // Create replace container with simplified styling
+            Panel replaceContainer = new Panel
+            {
+                Height = 50,
+                Dock = DockStyle.Top,
+                Margin = new Padding(0, 0, 0, 5),
+                Padding = new Padding(5),
+                BackColor = Color.White,
+                BorderStyle = BorderStyle.None
+            };
+
+            // Add enabled checkbox
+            CheckBox enabledCheckBox = new CheckBox
+            {
+                Text = "",
+                Checked = replaceData.Enabled,
+                Location = new Point(10, 15),
+                Width = 20,
+                Height = 20
+            };
+
+            // Create Find TextBox
+            TextBox findTextBox = new TextBox
+            {
+                Width = 220,
+                Height = 30,
+                Location = new Point(40, 10),
+                Font = new Font("Segoe UI", 10),
+                Text = replaceData.FindText,
+                PlaceholderText = "Text to find..."
+            };
+
+            // Create Replace TextBox
+            TextBox replaceTextBox = new TextBox
+            {
+                Width = 220,
+                Height = 30,
+                Location = new Point(270, 10),
+                Font = new Font("Segoe UI", 10),
+                Text = replaceData.ReplaceText,
+                PlaceholderText = "Replace with..."
+            };
+
+            // Create a rounded remove button
+            RoundedButton removeButton = new RoundedButton
+            {
+                Text = "X",
+                Width = 40,
+                Height = 30,
+                Location = new Point(500, 10),
+                BackColor = Color.FromArgb(220, 53, 69),
+                ForeColor = Color.White,
+                BorderRadius = 10,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold)
+            };
+
+            removeButton.Click += (s, ev) =>
+            {
+                replaceConditionsPanel.Controls.Remove(replaceContainer);
+                replaceConditions.RemoveAll(r => r.Container == replaceContainer);
+                statusLabel.Text = "Replace rule removed. Click 'Apply Replace' to update.";
+            };
+
+            replaceContainer.Controls.AddRange(new Control[] { enabledCheckBox, findTextBox, replaceTextBox, removeButton });
+            
+            // Add new replace condition
+            ReplaceCondition condition = new ReplaceCondition
+            {
+                Container = replaceContainer,
+                FindTextBox = findTextBox,
+                ReplaceTextBox = replaceTextBox,
+                EnabledCheckBox = enabledCheckBox
+            };
+            replaceConditions.Add(condition);
+
+            // Add to panel below the buttons
+            replaceConditionsPanel.Controls.Add(replaceContainer);
+            replaceContainer.BringToFront();
+        }
     }
 
     public class FilterCondition
@@ -1447,6 +1938,22 @@ namespace WinFormsApp1
         public string FilterType { get; set; }
         public string FilterText { get; set; }
         public string HighlightColor { get; set; } = "#FFFFFF";
+        public bool Enabled { get; set; } = true;
+    }
+
+    public class ReplaceCondition
+    {
+        public Panel Container { get; set; }
+        public TextBox FindTextBox { get; set; }
+        public TextBox ReplaceTextBox { get; set; }
+        public CheckBox EnabledCheckBox { get; set; }
+        public bool Enabled { get => EnabledCheckBox?.Checked ?? true; }
+    }
+
+    public class ReplaceData
+    {
+        public string FindText { get; set; }
+        public string ReplaceText { get; set; }
         public bool Enabled { get; set; } = true;
     }
 
