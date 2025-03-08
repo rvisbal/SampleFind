@@ -184,7 +184,7 @@ namespace WinFormsApp1
             }
             else
             {
-                BackColor = FlatAppearance.MouseOverBackColor;
+                BackColor = defaultBackColor;
             }
             Invalidate();
         }
@@ -226,6 +226,8 @@ namespace WinFormsApp1
         {
             // Create main menu
             MenuStrip menuStrip = new MenuStrip();
+            
+            // File menu
             ToolStripMenuItem fileMenu = new ToolStripMenuItem("File");
             ToolStripMenuItem openFileMenuItem = new ToolStripMenuItem("Open File", null, OpenFile_Click);
             fileMenu.DropDownItems.Add(openFileMenuItem);
@@ -234,6 +236,7 @@ namespace WinFormsApp1
             ToolStripMenuItem saveContentMenuItem = new ToolStripMenuItem("Save Content", null, SaveContent_Click);
             fileMenu.DropDownItems.Add(saveContentMenuItem);
 
+            // View menu
             ToolStripMenuItem viewMenu = new ToolStripMenuItem("View");
             ToolStripMenuItem showFiltersMenuItem = new ToolStripMenuItem("Show Filters", null, ShowFilters_Click);
             ToolStripMenuItem showSidebarMenuItem = new ToolStripMenuItem("Show Line Numbers");
@@ -243,8 +246,18 @@ namespace WinFormsApp1
             viewMenu.DropDownItems.Add(showFiltersMenuItem);
             viewMenu.DropDownItems.Add(showSidebarMenuItem);
 
+            // Tools menu
+            ToolStripMenuItem toolsMenu = new ToolStripMenuItem("Tools");
+            
+            // Add Clean Date Part menu item to Tools menu
+            ToolStripMenuItem cleanDatePartMenuItem = new ToolStripMenuItem("Clean Date Part (Remove Before '|')", null, CleanDatePart_Click);
+            toolsMenu.DropDownItems.Add(cleanDatePartMenuItem);
+
+            // Add all menus to the menu strip
             menuStrip.Items.Add(fileMenu);
             menuStrip.Items.Add(viewMenu);
+            menuStrip.Items.Add(toolsMenu);
+            
             this.MainMenuStrip = menuStrip;
             this.Controls.Add(menuStrip);
 
@@ -1117,6 +1130,90 @@ namespace WinFormsApp1
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
+            }
+        }
+
+        private void CleanDatePart_Click(object sender, EventArgs e)
+        {
+            // Check if there's content to process
+            if (originalLines.Count == 0)
+            {
+                MessageBox.Show("Please open a file first.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            try
+            {
+                // Show processing indicator
+                statusLabel.Text = "Processing...";
+                Application.DoEvents();
+
+                // Create a new list to store the cleaned lines
+                List<string> cleanedLines = new List<string>(originalLines.Count);
+                
+                // Process each line
+                foreach (string line in originalLines)
+                {
+                    string cleanedLine = line;
+                    int pipeIndex = line.IndexOf('|');
+                    
+                    // If the line contains a pipe character, remove everything before it
+                    if (pipeIndex >= 0)
+                    {
+                        cleanedLine = line.Substring(pipeIndex + 1);
+                    }
+                    
+                    cleanedLines.Add(cleanedLine);
+                }
+                
+                // Replace the original lines with the cleaned lines
+                originalLines = cleanedLines;
+                
+                // Update the display
+                mainTextBox.SuspendLayout();
+                mainTextBox.Clear();
+                
+                // For large files, use a StringBuilder and append in chunks
+                if (originalLines.Count > 10000)
+                {
+                    const int chunkSize = 5000;
+                    for (int i = 0; i < originalLines.Count; i += chunkSize)
+                    {
+                        int count = Math.Min(chunkSize, originalLines.Count - i);
+                        string chunk = string.Join(Environment.NewLine, originalLines.GetRange(i, count));
+                        mainTextBox.AppendText(chunk);
+                        if (i + count < originalLines.Count)
+                        {
+                            mainTextBox.AppendText(Environment.NewLine);
+                        }
+                        // Allow UI to update periodically for responsiveness
+                        if (i % 20000 == 0)
+                        {
+                            Application.DoEvents();
+                        }
+                    }
+                }
+                else
+                {
+                    mainTextBox.Text = string.Join(Environment.NewLine, originalLines);
+                }
+                
+                mainTextBox.Select(0, 0);
+                mainTextBox.ResumeLayout();
+                
+                // Update status bar
+                statusLabel.Text = $"Date part removed from {originalLines.Count:N0} lines";
+                
+                // If filters were applied, reapply them to the cleaned content
+                if (filterConditions.Count > 0 && filterConditions.Any(c => c.Enabled && !string.IsNullOrEmpty(c.TextBox.Text)))
+                {
+                    ApplyFilters_Click(null, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error processing content: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                statusLabel.Text = "Error processing content";
             }
         }
     }
