@@ -581,7 +581,11 @@ namespace WinFormsApp1
                 Width = 20,
                 Height = 20
             };
-            // Don't automatically apply filters when checkbox changes
+            enabledCheckBox.CheckedChanged += (s, ev) =>
+            {
+                // Don't automatically apply filters when checkbox changes
+                statusLabel.Text = "Filter enabled/disabled. Click 'Apply Filters' to update.";
+            };
 
             ComboBox filterTypeCombo = new ComboBox
             {
@@ -602,27 +606,41 @@ namespace WinFormsApp1
                 Font = new Font("Segoe UI", 10)
             };
 
-            // Create a rounded color button
-            RoundedButton colorButton = new RoundedButton
+            // Create a simple button for color selection
+            Button colorButton = new Button
             {
                 Width = 40,
                 Height = 30,
-                Location = new Point(380, 10), // Adjusted position
-                BackColor = Color.White,
-                BorderRadius = 10,
+                Location = new Point(380, 10),
+                BackColor = Color.FromArgb(0, 123, 255), // Default blue color
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
                 Text = ""
             };
 
-            colorButton.Click += (s, ev) =>
+            colorButton.Click += async (s, ev) =>
             {
-                using (ColorDialog colorDialog = new ColorDialog())
+                ColorDialog colorDialog = new ColorDialog();
+                colorDialog.Color = colorButton.BackColor;
+                colorDialog.FullOpen = true;
+                
+                if (colorDialog.ShowDialog() == DialogResult.OK)
                 {
-                    colorDialog.Color = colorButton.BackColor;
-                    if (colorDialog.ShowDialog() == DialogResult.OK)
+                    // Set the button color directly
+                    colorButton.BackColor = colorDialog.Color;
+                    
+                    // Update the filter condition directly
+                    foreach (var condition in filterConditions)
                     {
-                        colorButton.BackColor = colorDialog.Color;
-                        // Don't automatically apply filters when color changes
+                        if (condition.ColorButton == colorButton)
+                        {
+                            condition.HighlightColor = colorDialog.Color;
+                            break;
+                        }
                     }
+                    
+                    // Show confirmation
+                    statusLabel.Text = $"Color updated: R={colorDialog.Color.R}, G={colorDialog.Color.G}, B={colorDialog.Color.B}. Click Apply Filters.";
                 }
             };
 
@@ -951,7 +969,11 @@ namespace WinFormsApp1
                 Width = 20,
                 Height = 20
             };
-            // Don't automatically apply filters when checkbox changes
+            enabledCheckBox.CheckedChanged += (s, ev) =>
+            {
+                // Don't automatically apply filters when checkbox changes
+                statusLabel.Text = "Filter enabled/disabled. Click 'Apply Filters' to update.";
+            };
 
             ComboBox filterTypeCombo = new ComboBox
             {
@@ -973,27 +995,41 @@ namespace WinFormsApp1
                 Font = new Font("Segoe UI", 10)
             };
 
-            // Create a rounded color button
-            RoundedButton colorButton = new RoundedButton
+            // Create a simple button for color selection
+            Button colorButton = new Button
             {
                 Width = 40,
                 Height = 30,
-                Location = new Point(380, 10), // Adjusted position
+                Location = new Point(380, 10),
                 BackColor = ColorTranslator.FromHtml(filterData.HighlightColor),
-                BorderRadius = 10,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
                 Text = ""
             };
 
-            colorButton.Click += (s, ev) =>
+            colorButton.Click += async (s, ev) =>
             {
-                using (ColorDialog colorDialog = new ColorDialog())
+                ColorDialog colorDialog = new ColorDialog();
+                colorDialog.Color = colorButton.BackColor;
+                colorDialog.FullOpen = true;
+                
+                if (colorDialog.ShowDialog() == DialogResult.OK)
                 {
-                    colorDialog.Color = colorButton.BackColor;
-                    if (colorDialog.ShowDialog() == DialogResult.OK)
+                    // Set the button color directly
+                    colorButton.BackColor = colorDialog.Color;
+                    
+                    // Update the filter condition directly
+                    foreach (var condition in filterConditions)
                     {
-                        colorButton.BackColor = colorDialog.Color;
-                        // Don't automatically apply filters when color changes
+                        if (condition.ColorButton == colorButton)
+                        {
+                            condition.HighlightColor = colorDialog.Color;
+                            break;
+                        }
                     }
+                    
+                    // Show confirmation
+                    statusLabel.Text = $"Color updated: R={colorDialog.Color.R}, G={colorDialog.Color.G}, B={colorDialog.Color.B}. Click Apply Filters.";
                 }
             };
 
@@ -1360,7 +1396,19 @@ namespace WinFormsApp1
         public ComboBox TypeComboBox { get; set; }
         public TextBox TextBox { get; set; }
         public Button ColorButton { get; set; }
-        public Color HighlightColor { get; set; } = Color.White;
+        private Color highlightColor = Color.White;
+        public Color HighlightColor 
+        { 
+            get { return highlightColor; }
+            set 
+            { 
+                highlightColor = value;
+                if (ColorButton != null)
+                {
+                    ColorButton.BackColor = value;
+                }
+            }
+        }
         public CheckBox EnabledCheckBox { get; set; }
         public bool Enabled { get => EnabledCheckBox?.Checked ?? true; }
     }
