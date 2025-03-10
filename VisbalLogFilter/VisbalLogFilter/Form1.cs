@@ -76,29 +76,7 @@ namespace VisbalLogFilter
 
         private void InitializeCustomComponents()
         {
-            // Set up the main text box with line numbers
-            mainTextBox = new Libraries.LineNumberRichTextBox
-            {
-                Dock = DockStyle.Fill,
-                ShowLineNumbers = false,
-                Font = new Font("Consolas", 9.75F),
-                BackColor = Color.White,
-                ForeColor = Color.Black,
-                BorderStyle = BorderStyle.None
-            };
-            this.Controls.Add(mainTextBox);
-
-            // Create status bar
-            statusStrip = new StatusStrip();
-            statusLabel = new ToolStripStatusLabel
-            {
-                Spring = true,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            statusStrip.Items.Add(statusLabel);
-            this.Controls.Add(statusStrip);
-
-            // Create menu
+            // Create menu first
             MenuStrip menuStrip = new MenuStrip();
             
             // File menu
@@ -126,10 +104,40 @@ namespace VisbalLogFilter
             this.MainMenuStrip = menuStrip;
             this.Controls.Add(menuStrip);
 
+            // Create a container panel for the main text box
+            Panel contentPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(0, menuStrip.Height, 0, 0) // Add padding at the top to account for menu height
+            };
+            this.Controls.Add(contentPanel);
+
+            // Set up the main text box with line numbers
+            mainTextBox = new Libraries.LineNumberRichTextBox
+            {
+                Dock = DockStyle.Fill,
+                ShowLineNumbers = false,
+                Font = new Font("Consolas", 9.75F),
+                BackColor = Color.White,
+                ForeColor = Color.Black,
+                BorderStyle = BorderStyle.None
+            };
+            contentPanel.Controls.Add(mainTextBox);
+
+            // Create status bar
+            statusStrip = new StatusStrip();
+            statusLabel = new ToolStripStatusLabel
+            {
+                Spring = true,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            statusStrip.Items.Add(statusLabel);
+            this.Controls.Add(statusStrip);
+
             // Ensure proper z-order
-            mainTextBox.BringToFront();
-            menuStrip.BringToFront();
             statusStrip.BringToFront();
+            menuStrip.BringToFront();
+            contentPanel.SendToBack();
         }
 
         private void CreateFilterForm()
